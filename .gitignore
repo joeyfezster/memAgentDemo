@@ -1,0 +1,45 @@
+# General
+.DS_Store
+.env
+.env.*
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.swp
+*.swo
+.mypy_cache/
+pytest_cache/
+.coverage
+htmlcov/
+
+# Python
+.venv/
+.poetry/
+.poetry-cache/
+
+# Node/Frontend
+node_modules/
+dist/
+.eslintcache
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Docker
+**/Dockerfile.dSYM
+
+# IDEs
+.idea/
+.vscode/
+
+# Coverage / reports
+coverage/
+reports/
+
+# Generated
+**/__pycache__
+
+# uv / poetry lock backups
+*.lock.bak

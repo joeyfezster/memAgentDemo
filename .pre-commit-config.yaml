@@ -1,0 +1,52 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.8
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        additional_dependencies: ["prettier@3.1.0"]
+  - repo: local
+    hooks:
+      - id: pnpm-lint
+        name: pnpm lint
+        entry: bash
+        args:
+          - -c
+          - "cd frontend && pnpm lint"
+        language: system
+        pass_filenames: false
+      - id: pnpm-test
+        name: pnpm test
+        entry: bash
+        args:
+          - -c
+          - "cd frontend && pnpm test -- --run"
+        language: system
+        pass_filenames: false
+      - id: backend-tests
+        name: backend tests
+        entry: bash
+        args:
+          - -c
+          - "cd backend && poetry run pytest"
+        language: system
+        pass_filenames: false
