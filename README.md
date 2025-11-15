@@ -2,6 +2,37 @@
 
 Scaffolded monorepo containing the frontend, backend, and infrastructure required for the memAgent platform.
 
+## Prerequisites
+
+Before running `make bootstrap`, ensure you have the following installed on your system:
+
+### Required System Dependencies
+
+- **Python 3.12**: `brew install python@3.12`
+- **virtualenv**: `brew install virtualenv`
+- **Node.js 25.x**: `brew install node`
+- **corepack**: After installing Node.js, run `npm install -g corepack && corepack enable`
+
+### Initial Setup
+
+1. Create a Python virtual environment:
+   ```bash
+   virtualenv .venv -p python3.12
+   ```
+2. Run bootstrap to install all project dependencies:
+   ```bash
+   make bootstrap
+   ```
+
+This will:
+
+- Install pip, pre-commit, and poetry in your virtualenv
+- Configure pre-commit hooks
+- Enable corepack for pnpm management
+- Create `.env` files from templates
+- Install backend Python dependencies via Poetry
+- Install frontend Node dependencies via pnpm
+
 ## Repository layout
 
 ```

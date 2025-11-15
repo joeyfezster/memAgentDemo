@@ -10,43 +10,23 @@ repos:
     hooks:
       - id: ruff
         args: ["--fix"]
+        files: ^backend/
       - id: ruff-format
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
-    hooks:
-      - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
+        files: ^backend/
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.1.0
     hooks:
       - id: prettier
+        files: \.(ts|tsx|js|jsx|json|md)$
         additional_dependencies: ["prettier@3.1.0"]
   - repo: local
     hooks:
-      - id: pnpm-lint
-        name: pnpm lint
+      - id: eslint
+        name: eslint
         entry: bash
         args:
           - -c
-          - "cd frontend && pnpm lint"
+          - "cd frontend && pnpm exec eslint ."
         language: system
-        pass_filenames: false
-      - id: pnpm-test
-        name: pnpm test
-        entry: bash
-        args:
-          - -c
-          - "cd frontend && pnpm test -- --run"
-        language: system
-        pass_filenames: false
-      - id: backend-tests
-        name: backend tests
-        entry: bash
-        args:
-          - -c
-          - "cd backend && poetry run pytest"
-        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false

@@ -2,23 +2,42 @@ SHELL := /bin/bash
 DOCKER_COMPOSE := docker compose -f infra/docker-compose.yml
 HAS_DOCKER := $(shell command -v docker >/dev/null 2>&1 && echo 1 || echo 0)
 USE_DOCKER ?= $(HAS_DOCKER)
+VENV_PATH := .venv
+PYTHON := $(VENV_PATH)/bin/python
+PIP := $(VENV_PATH)/bin/pip
 
-.PHONY: bootstrap up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
+.PHONY: bootstrap activate up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
 
 bootstrap:
-	@python3 -m pip install --upgrade pip
-	@python3 -m pip install pre-commit poetry==1.8.4
-	@pre-commit install
+	@if [ ! -d "$(VENV_PATH)" ]; then \
+		echo "Error: Virtual environment not found at $(VENV_PATH)"; \
+		echo "Please create one first by running:"; \
+		echo "  virtualenv .venv -p python3.12"; \
+		exit 1; \
+	fi
+	@$(PIP) install --upgrade pip
+	@$(PIP) install pre-commit poetry==1.8.4
+	@$(VENV_PATH)/bin/pre-commit install
 	@corepack enable
 	@[ -f backend/.env ] || cp backend/.env.example backend/.env
 	@[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
 	@if [ "$(USE_DOCKER)" != "1" ]; then \
-		cd backend && poetry install --with dev; \
+		cd backend && $(VENV_PATH)/bin/poetry install --with dev; \
 	fi
 	@if [ "$(USE_DOCKER)" != "1" ]; then \
 		cd frontend && pnpm install; \
 	fi
 	@echo "Bootstrap complete."
+
+activate:
+	@if [ ! -d "$(VENV_PATH)" ]; then \
+		echo "Error: Virtual environment not found at $(VENV_PATH)"; \
+		echo "Please create one first by running:"; \
+		echo "  virtualenv .venv -p python3.12"; \
+		exit 1; \
+	fi
+	@echo "To activate the virtual environment, run:"
+	@echo "  source $(VENV_PATH)/bin/activate"
 
 up:
 	$(DOCKER_COMPOSE) up --build
@@ -48,13 +67,10 @@ endef
 lint: lint-backend lint-frontend
 
 lint-backend:
-	$(call run_backend,poetry run ruff check app tests)
-	$(call run_backend,poetry run black --check app tests)
-	$(call run_backend,poetry run isort --check-only app tests)
+	$(call run_backend,$(VENV_PATH)/bin/poetry run ruff check app tests)
 
 lint-frontend:
 	$(call run_frontend,pnpm lint)
-	$(call run_frontend,pnpm format)
 
 test: test-backend test-frontend
 
