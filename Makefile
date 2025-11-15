@@ -2,9 +2,12 @@ SHELL := /bin/bash
 DOCKER_COMPOSE := docker compose -f infra/docker-compose.yml
 HAS_DOCKER := $(shell command -v docker >/dev/null 2>&1 && echo 1 || echo 0)
 USE_DOCKER ?= $(HAS_DOCKER)
+ROOT_DIR := $(shell pwd)
 VENV_PATH := .venv
 PYTHON := $(VENV_PATH)/bin/python
 PIP := $(VENV_PATH)/bin/pip
+POETRY := $(ROOT_DIR)/$(VENV_PATH)/bin/poetry
+PRECOMMIT := $(ROOT_DIR)/$(VENV_PATH)/bin/pre-commit
 
 .PHONY: bootstrap activate up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
 
@@ -17,12 +20,12 @@ bootstrap:
 	fi
 	@$(PIP) install --upgrade pip
 	@$(PIP) install pre-commit poetry==1.8.4
-	@$(VENV_PATH)/bin/pre-commit install
+	@"$(PRECOMMIT)" install
 	@corepack enable
 	@[ -f backend/.env ] || cp backend/.env.example backend/.env
 	@[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
 	@if [ "$(USE_DOCKER)" != "1" ]; then \
-		cd backend && $(VENV_PATH)/bin/poetry install --with dev; \
+		cd backend && "$(POETRY)" install --with dev; \
 	fi
 	@if [ "$(USE_DOCKER)" != "1" ]; then \
 		cd frontend && pnpm install; \
@@ -67,7 +70,7 @@ endef
 lint: lint-backend lint-frontend
 
 lint-backend:
-	$(call run_backend,$(VENV_PATH)/bin/poetry run ruff check app tests)
+	$(call run_backend,"$(POETRY)" run ruff check app tests)
 
 lint-frontend:
 	$(call run_frontend,pnpm lint)
