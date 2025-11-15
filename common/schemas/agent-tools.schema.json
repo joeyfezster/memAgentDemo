@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Tool Contracts",
+  "description": "Tool interface contracts for Letta agent integration",
+  "type": "object",
+  "definitions": {
+    "ToolRequest": {
+      "type": "object",
+      "properties": {
+        "tool_name": {
+          "type": "string",
+          "description": "Name of the tool to execute"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters for the tool execution"
+        }
+      },
+      "required": ["tool_name", "parameters"]
+    },
+    "ToolResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the tool execution was successful"
+        },
+        "result": {
+          "description": "Result of the tool execution"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if execution failed"
+        }
+      },
+      "required": ["success"]
+    },
+    "MemoryTool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["create_memory", "retrieve_memory", "search_memories"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+version: '3.9'
+
+# Development override configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: builder
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DEBUG: "true"
+      ENVIRONMENT: development
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      target: builder
+    command: npm run dev
+    ports:
+      - "5173:5173"
+    stdin_open: true
+    tty: true
+
+  # PGAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: memagent-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@memagent.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - memagent-network

@@ -1,0 +1,147 @@
+openapi: 3.0.3
+info:
+  title: Memory Agent API
+  description: Backend API for Memory Agent system
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.memagent.example.com
+    description: Production server
+
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+  /api/ready:
+    get:
+      summary: Readiness check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+
+  /api/memory:
+    post:
+      summary: Create a new memory
+      tags:
+        - Memory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryCreate'
+      responses:
+        '201':
+          description: Memory created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+
+    get:
+      summary: List memories
+      tags:
+        - Memory
+      parameters:
+        - name: skip
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: List of memories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Memory'
+
+  /api/memory/{memory_id}:
+    get:
+      summary: Get a memory by ID
+      tags:
+        - Memory
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Memory details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+        '404':
+          description: Memory not found
+
+components:
+  schemas:
+    MemoryCreate:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Memory content
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional metadata
+
+    Memory:
+      allOf:
+        - $ref: '#/components/schemas/MemoryCreate'
+        - type: object
+          required:
+            - id
+            - created_at
+            - updated_at
+          properties:
+            id:
+              type: string
+              description: Unique identifier
+            created_at:
+              type: string
+              format: date-time
+              description: Creation timestamp
+            updated_at:
+              type: string
+              format: date-time
+              description: Last update timestamp
