@@ -4,26 +4,27 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.conversation import Conversation
+    from app.models.message import Message
+    from app.models.user import User
 
 
-class User(Base):
+class Conversation(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
-    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    persona_handle: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(255), nullable=True)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -39,6 +40,7 @@ class User(Base):
         server_onupdate=func.now(),
     )
 
-    conversations: Mapped[list[Conversation]] = relationship(
-        "Conversation", back_populates="user", cascade="all, delete-orphan"
+    user: Mapped[User] = relationship("User", back_populates="conversations")
+    messages: Mapped[list[Message]] = relationship(
+        "Message", back_populates="conversation", cascade="all, delete-orphan"
     )

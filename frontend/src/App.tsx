@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 
 import "./App.css";
-import { fetchCurrentUser, login, type User } from "./api/client";
+import {
+  createConversation,
+  fetchCurrentUser,
+  getConversations,
+  login,
+  type Conversation,
+  type User,
+} from "./api/client";
 import ChatWindow from "./components/ChatWindow";
 import LoginForm from "./components/LoginForm";
+import Sidebar from "./components/Sidebar";
 
 type AuthState = {
   token: string;
@@ -30,10 +38,14 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const restoreUser = async () => {
-      if (!auth || !auth.token || auth.user) {
+      if (!auth || !auth.token || auth.user || !initializing) {
         setInitializing(false);
         return;
       }
@@ -56,14 +68,36 @@ function App() {
     };
 
     void restoreUser();
-  }, [auth]);
+  }, [auth, initializing]);
+
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!auth?.token || !auth?.user) {
+        setConversations([]);
+        setCurrentConversationId(null);
+        return;
+      }
+
+      try {
+        const response = await getConversations(auth.token);
+        setConversations(response.conversations);
+      } catch (loadError) {
+        console.error("Failed to load conversations", loadError);
+      }
+    };
+
+    void loadConversations();
+  }, [auth, currentConversationId]);
 
   const handleLogin = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
       const response = await login(email, password);
-      const next: AuthState = { token: response.access_token, user: response.user };
+      const next: AuthState = {
+        token: response.access_token,
+        user: response.user,
+      };
       setAuth(next);
       if (typeof window !== "undefined") {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -81,28 +115,72 @@ function App() {
   const handleLogout = () => {
     setAuth(null);
     setError(null);
+    setConversations([]);
+    setCurrentConversationId(null);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
+  };
+
+  const handleNewChat = async () => {
+    if (!auth?.token) return;
+
+    try {
+      const response = await createConversation(auth.token);
+      const newConversation: Conversation = {
+        id: response.id,
+        user_id: auth.user!.id,
+        title: null,
+        created_at: response.created_at,
+        updated_at: response.created_at,
+      };
+      setConversations((prev) => [newConversation, ...prev]);
+      setCurrentConversationId(response.id);
+    } catch (createError) {
+      console.error("Failed to create conversation", createError);
+    }
+  };
+
+  const handleSelectConversation = (id: string) => {
+    setCurrentConversationId(id);
   };
 
   const user = auth?.user ?? null;
 
   return (
     <div className="app">
-      <header className="app__header">
-        <h1>memAgent Demo</h1>
-        <p className="app__subtitle">
-          {user ? "Interact with your AI workspace." : "Sign in to continue to your AI workspace."}
-        </p>
-      </header>
-      <main className="app__main">
-        {user ? (
-          <ChatWindow user={user} token={auth!.token} onLogout={handleLogout} />
-        ) : (
-          <LoginForm onSubmit={handleLogin} loading={loading || initializing} error={error} />
-        )}
-      </main>
+      {user ? (
+        <div className="app-container">
+          <Sidebar
+            conversations={conversations}
+            activeConversationId={currentConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewChat={handleNewChat}
+          />
+          <ChatWindow
+            user={user}
+            token={auth!.token}
+            conversationId={currentConversationId}
+            onLogout={handleLogout}
+          />
+        </div>
+      ) : (
+        <>
+          <header className="app__header">
+            <h1>memAgent Demo</h1>
+            <p className="app__subtitle">
+              Sign in to continue to your AI workspace.
+            </p>
+          </header>
+          <main className="app__main">
+            <LoginForm
+              onSubmit={handleLogin}
+              loading={loading || initializing}
+              error={error}
+            />
+          </main>
+        </>
+      )}
     </div>
   );
 }
