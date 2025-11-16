@@ -1,5 +1,10 @@
 # Project General Coding Guidelines
 
+## Workflows
+
+- When working on a feature or bugfix, create your work plan and keep it in a local markdown file to track your progress. this is a todo list. Track implicit decisions you make along the way in this file.
+- This repo uses a local .venv for python dependencies and poetry for dependency management. note also the makefile
+
 ## Code Style
 
 - Avoid writing comments at all costs. If you see comments, refactor the code until they are not needed.

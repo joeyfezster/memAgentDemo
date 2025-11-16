@@ -1,0 +1,77 @@
+name: Letta Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-letta:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: memagent
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      letta:
+        image: letta/letta:latest
+        env:
+          LETTA_PG_URI: postgresql://postgres:postgres@postgres:5432/memagent
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LETTA_SERVER_PASSWORD: ${{ secrets.LETTA_SERVER_PASSWORD }}
+          SECURE: false
+        ports:
+          - 8283:8283
+        options: >-
+          --health-cmd "curl -f http://localhost:8283/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          poetry install --with dev
+
+      - name: Create vector extension in PostgreSQL
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d memagent -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: Wait for Letta server
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:8283/health 2>/dev/null; do sleep 2; done' || echo "Letta health check skipped"
+
+      - name: Run Letta integration tests
+        working-directory: ./backend
+        env:
+          LETTA_BASE_URL: http://localhost:8283
+          LETTA_SERVER_PASSWORD: ${{ secrets.LETTA_SERVER_PASSWORD }}
+          LETTA_SECURE: false
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          poetry run pytest tests/test_letta_integration.py -v
