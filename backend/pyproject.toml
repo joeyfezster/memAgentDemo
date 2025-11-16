@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Backend service for memAgentDemo"
 authors = ["memAgent Team <team@example.com>"]
 readme = "README.md"
-packages = [{ include = "app" }]
+packages = [{ include = "app" }, { include = "agent" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"

@@ -1,4 +1,6 @@
 from typing import Optional
+
+from agent.tools import build_toolkit
 from letta_client import Letta
 from pydantic import BaseModel
 
@@ -22,6 +24,7 @@ def create_simple_agent(
     memory_blocks: Optional[list[dict]] = None,
     model: str = "openai/gpt-4o-mini",
     embedding: str = "openai/text-embedding-3-small",
+    tools: Optional[list[str]] = None,
 ) -> str:
     if memory_blocks is None:
         memory_blocks = [
@@ -34,8 +37,17 @@ def create_simple_agent(
         model=model,
         embedding=embedding,
         context_window_limit=16000,
+        tools=tools,
     )
     return agent_state.id
+
+
+def register_mock_tools(client: Letta) -> list[str]:
+    registered = []
+    for tool in build_toolkit():
+        created = client.tools.add(tool=tool)
+        registered.append(created.name)
+    return registered
 
 
 def send_message_to_agent(

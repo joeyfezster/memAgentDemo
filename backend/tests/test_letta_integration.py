@@ -3,6 +3,7 @@ import pytest
 from app.core.letta_client import (
     create_letta_client,
     create_simple_agent,
+    register_mock_tools,
     send_message_to_agent,
 )
 
@@ -106,3 +107,57 @@ def test_agent_conversation_continuity(letta_client, letta_agent_id):
     )
     assert second_response.message_content
     assert "alice" in second_response.message_content.lower()
+
+
+def test_agent_uses_multiple_tools(letta_client):
+    tool_names = register_mock_tools(letta_client)
+    selected_tools = tool_names[:2]
+    memory_blocks = [
+        {"label": "human", "limit": 2000, "value": "The user is verifying tool usage."},
+        {
+            "label": "persona",
+            "limit": 2000,
+            "value": "Always call every assigned tool before responding and explain how results connect.",
+        },
+    ]
+    agent_id = create_simple_agent(
+        letta_client,
+        memory_blocks=memory_blocks,
+        tools=selected_tools,
+    )
+    try:
+        prompt = (
+            "Use places.search_places to locate a Paramus, NJ mall, then call place_insights.get_place_summary "
+            "for the most relevant result and share the highlights."
+        )
+        response = letta_client.agents.messages.create(
+            agent_id=agent_id,
+            messages=[{"role": "user", "content": prompt}],
+            include_return_message_types=[
+                "tool_call_message",
+                "tool_return_message",
+                "assistant_message",
+            ],
+        )
+        tool_calls = [
+            _tool_call_name(message)
+            for message in response.messages
+            if getattr(message, "message_type", "") == "tool_call_message"
+        ]
+        tool_calls = [name for name in tool_calls if name]
+        assert len(set(tool_calls)) >= 2
+    finally:
+        try:
+            letta_client.agents.delete(agent_id)
+        except Exception:
+            pass
+
+
+def _tool_call_name(message):
+    tool_call = getattr(message, "tool_call", None)
+    if tool_call is None:
+        return None
+    name = getattr(tool_call, "name", None)
+    if name:
+        return name
+    return None
