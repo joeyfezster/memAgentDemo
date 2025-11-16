@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     environment: str = "local"
     debug: bool = True
     database_url: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres"
+    jwt_secret_key: str = "change-me"
+    access_token_expire_minutes: int = 60
+    persona_seed_password: str = "changeme123"
 
 
 @lru_cache

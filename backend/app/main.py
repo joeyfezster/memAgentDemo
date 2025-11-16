@@ -3,10 +3,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import api_router
 from app.core.config import get_settings
-from app.db.session import engine
+from app.db.base import Base
+from app.db.seed import seed_personas
+from app.db.session import get_engine, get_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +17,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
-        async with engine.begin():
-            pass
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            await seed_personas(session)
     except Exception as exc:
         logger.error("Database connection failed", exc_info=exc)
     yield
@@ -24,6 +31,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.project_name, debug=settings.debug, lifespan=lifespan)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     app.include_router(api_router)
     return app
 

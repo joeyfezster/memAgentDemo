@@ -18,7 +18,7 @@
 }
 
 .app__main {
-  width: min(100%, 420px);
+  width: min(100%, 760px);
   background-color: rgba(15, 23, 42, 0.8);
   border-radius: 16px;
   padding: 2rem;
@@ -68,4 +68,116 @@
   margin: 0;
   font-size: 0.95rem;
   color: #bbf7d0;
+}
+
+.login__status--error {
+  color: #fca5a5;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.chat__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.chat__title {
+  margin: 0;
+}
+
+.chat__subtitle {
+  margin: 0.25rem 0 0;
+  color: #94a3b8;
+}
+
+.chat__logout {
+  border: 1px solid #38bdf8;
+  background: transparent;
+  color: #e0f2fe;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chat__messages {
+  min-height: 240px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-right: 0.5rem;
+}
+
+.chat__empty {
+  color: #cbd5f5;
+  text-align: center;
+}
+
+.chat__message {
+  padding: 1rem;
+  border-radius: 12px;
+  background-color: rgba(148, 163, 184, 0.12);
+  display: grid;
+  gap: 0.25rem;
+}
+
+.chat__message--assistant {
+  background-color: rgba(56, 189, 248, 0.16);
+}
+
+.chat__message-label {
+  font-size: 0.85rem;
+  color: #a5b4fc;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chat__composer {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chat__label {
+  font-weight: 600;
+}
+
+.chat__composer textarea {
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background-color: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  padding: 0.75rem;
+  resize: vertical;
+}
+
+.chat__composer textarea:focus {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+.chat__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chat__send {
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #818cf8);
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat__error {
+  margin: 0;
+  color: #fca5a5;
 }
