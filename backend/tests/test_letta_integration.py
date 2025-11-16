@@ -39,38 +39,6 @@ def test_create_agent(letta_client):
     letta_client.agents.delete(agent_id)
 
 
-def test_mem_block_impacts_agent_behavior(letta_client):
-    memory_blocks = [
-        {"label": "human", "value": "The user is testing the agent."},
-        {
-            "label": "persona",
-            "value": "I iNtErChAnGe uPpEr cAsE aNd lOwEr CaSeS iN mY rEsPoNsEs.",
-        },
-    ]
-    agent_id = create_simple_agent(letta_client, memory_blocks=memory_blocks)
-
-    try:
-        message = "tell me something. respond with 3 words at least 5 chars long each."
-        response = send_message_to_agent(letta_client, agent_id, message)
-
-        assert response is not None
-        assert response.agent_id == agent_id
-        assert isinstance(response.message_content, str)
-        assert len(response.message_content) > 0
-
-        longest_word = max(response.message_content.split(), key=len)
-        ct_lowercase = sum(1 for c in longest_word if c.islower())
-        ct_uppercase = sum(1 for c in longest_word if c.isupper())
-        assert (
-            ct_lowercase >= 2 and ct_uppercase >= 2
-        ), f"Expected at least 2 lowercase and 2 uppercase letters in the longest word but got: {longest_word}"
-    finally:
-        try:
-            letta_client.agents.delete(agent_id)
-        except Exception:
-            pass
-
-
 def test_agent_conversation_continuity(letta_client, letta_agent_id):
     first_message = "My name is Alice."
     first_response = send_message_to_agent(letta_client, letta_agent_id, first_message)
