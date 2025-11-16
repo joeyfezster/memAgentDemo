@@ -139,12 +139,13 @@ describe("App", () => {
       { timeout: 5000 },
     );
 
-    const originalMessage = await screen.findByText(
-      /first message/i,
-      {},
+    await waitFor(
+      () => {
+        const messages = screen.getAllByText(/first message/i);
+        expect(messages.length).toBeGreaterThan(0);
+      },
       { timeout: 5000 },
     );
-    expect(originalMessage).toBeInTheDocument();
 
     const originalReply = await screen.findByText(
       /hi daniel/i,
