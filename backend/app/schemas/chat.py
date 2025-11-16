@@ -9,3 +9,6 @@ class ChatMessage(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    agent_slug: str
+    agent_name: str
+    reasoning: str

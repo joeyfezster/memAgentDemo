@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agents import get_agent_orchestrator
 from app.api.routes import api_router
 from app.core.config import get_settings
 from app.db.base import Base
@@ -23,6 +24,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         session_factory = get_session_factory()
         async with session_factory() as session:
             await seed_personas(session)
+        orchestrator = get_agent_orchestrator()
+        await orchestrator.bootstrap()
     except Exception as exc:
         logger.error("Database connection failed", exc_info=exc)
     yield

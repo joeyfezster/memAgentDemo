@@ -37,5 +37,10 @@ async def test_login_me_and_chat_flow():
         )
         assert chat_response.status_code == 200
         chat_payload = chat_response.json()
-        assert chat_payload["reply"].lower().startswith("hi ")
-        assert user["display_name"].lower() in chat_payload["reply"].lower()
+        assert chat_payload["reply"]
+        assert chat_payload["agent_slug"] in {
+            "specialized-analyst",
+            "generalist-analyst",
+        }
+        assert chat_payload["agent_name"]
+        assert chat_payload["reasoning"]

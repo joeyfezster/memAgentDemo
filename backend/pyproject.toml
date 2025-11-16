@@ -17,6 +17,7 @@ asyncpg = "^0.29.0"
 psycopg = { extras = ["binary"], version = "^3.1.19" }
 python-jose = { extras = ["cryptography"], version = "^3.3.0" }
 aiosqlite = "^0.20.0"
+letta-client = "^0.1.324"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

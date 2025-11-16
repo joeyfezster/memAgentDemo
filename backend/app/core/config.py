@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
     persona_seed_password: str = "changeme123"
+    letta_enabled: bool = False
+    letta_base_url: str | None = None
+    letta_project_id: str | None = None
+    letta_api_token: str | None = None
+    letta_routing_agent_identifier: str = "routing-analyst"
+    letta_specialized_agent_identifier: str = "specialized-analyst"
+    letta_generalist_agent_identifier: str = "generalist-analyst"
 
 
 @lru_cache
