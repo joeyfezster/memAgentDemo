@@ -4,8 +4,9 @@ type ApiAwareGlobal = typeof globalThis & {
 
 function getApiBaseUrl(): string {
   const envValue =
-    (typeof process !== "undefined" ? process.env.VITE_API_BASE_URL : undefined) ??
-    import.meta.env.VITE_API_BASE_URL;
+    (typeof process !== "undefined"
+      ? process.env.VITE_API_BASE_URL
+      : undefined) ?? import.meta.env.VITE_API_BASE_URL;
   const runtimeValue = (globalThis as ApiAwareGlobal).__API_BASE_URL__;
   return runtimeValue ?? envValue ?? "http://localhost:8000";
 }
@@ -30,7 +31,44 @@ export type ChatResponse = {
   reply: string;
 };
 
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export type Message = {
+  id: string;
+  conversation_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+};
+
+export type Conversation = {
+  id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateConversationResponse = {
+  id: string;
+  created_at: string;
+};
+
+export type ConversationListResponse = {
+  conversations: Conversation[];
+};
+
+export type MessageListResponse = {
+  messages: Message[];
+};
+
+export type SendMessageResponse = {
+  user_message: Message;
+  assistant_message: Message;
+};
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<LoginResponse> {
   const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -78,4 +116,82 @@ export async function sendChatMessage(
   }
 
   return response.json() as Promise<ChatResponse>;
+}
+
+export async function createConversation(
+  token: string,
+): Promise<CreateConversationResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/chat/conversations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create conversation");
+  }
+
+  return response.json() as Promise<CreateConversationResponse>;
+}
+
+export async function getConversations(
+  token: string,
+): Promise<ConversationListResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/chat/conversations`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch conversations");
+  }
+
+  return response.json() as Promise<ConversationListResponse>;
+}
+
+export async function getConversationMessages(
+  token: string,
+  conversationId: string,
+): Promise<MessageListResponse> {
+  const response = await fetch(
+    `${getApiBaseUrl()}/chat/conversations/${conversationId}/messages`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch messages");
+  }
+
+  return response.json() as Promise<MessageListResponse>;
+}
+
+export async function sendMessageToConversation(
+  token: string,
+  conversationId: string,
+  content: string,
+): Promise<SendMessageResponse> {
+  const response = await fetch(
+    `${getApiBaseUrl()}/chat/conversations/${conversationId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content }),
+    },
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to send message");
+  }
+
+  return response.json() as Promise<SendMessageResponse>;
 }
