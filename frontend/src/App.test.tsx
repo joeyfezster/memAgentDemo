@@ -17,10 +17,11 @@ describe("App", () => {
     await user.type(passwordInput, "test-password");
     await user.click(submitButton);
 
-    const welcomeHeading = await screen.findByRole("heading", {
-      name: /welcome back/i,
-      timeout: 10000,
-    });
+    const welcomeHeading = await screen.findByRole(
+      "heading",
+      { name: /welcome back/i },
+      { timeout: 10000 },
+    );
     expect(welcomeHeading).toBeInTheDocument();
 
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -30,9 +31,7 @@ describe("App", () => {
     const sendButton = screen.getByRole("button", { name: /send/i });
     await user.click(sendButton);
 
-    const reply = await screen.findByText(/hi daniel/i, undefined, {
-      timeout: 10000,
-    });
+    const reply = await screen.findByText(/hi daniel/i, {}, { timeout: 10000 });
     expect(reply).toBeInTheDocument();
   }, 15000);
 });
