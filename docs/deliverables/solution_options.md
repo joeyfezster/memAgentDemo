@@ -9,29 +9,31 @@
 
 ## Performance Comparison
 
-| Concern                       | Naive Memory System                    | Basic User & Agent Memory                | Enhanced User, Agent & Platform Memory | Robust Multi-tier with RBAC               |
-| ----------------------------- | -------------------------------------- | ---------------------------------------- | -------------------------------------- | ----------------------------------------- |
-| **Personalization Depth**     | 🔴 Shallow, unstructured text dump     | 🟡 Structured user blocks, limited depth | 🟢 Rich context from multiple sources  | 🟢 Deep multi-dimensional personalization |
-| **Cross-session Continuity**  | 🟡 Persists but hard to query          | 🟢 Automatic session persistence         | 🟢 Full continuity with context        | 🟢 Complete history with governance       |
-| **Scalability**               | 🔴 Files grow unbounded, slow searches | 🟡 Per-user agents limit scale           | 🟢 Shared tools reduce redundancy      | 🟢 Distributed with resource optimization |
-| **Data Structure**            | 🔴 Unstructured text only              | 🟡 Basic structured blocks               | 🟢 Mixed structured/unstructured       | 🟢 Schema-driven with validation          |
-| **Query Performance**         | 🔴 Linear search through text          | 🟡 In-memory but limited recall          | 🟢 Vector search with caching          | 🟢 Optimized multi-tier retrieval         |
-| **Data Freshness**            | 🔴 No automatic updates                | 🟡 Manual memory updates only            | 🟢 Platform data auto-synced           | 🟢 Real-time with change detection        |
-| **Context Relevance**         | 🔴 No relevance scoring                | 🟡 Basic recency weighting               | 🟢 Semantic similarity ranking         | 🟢 ML-driven relevance optimization       |
-| **Memory Conflicts**          | 🔴 Last write wins, data loss          | 🟡 Agent-managed deduplication           | 🟢 Conflict detection and merge        | 🟢 Version control with policies          |
-| **Privacy & Compliance**      | 🔴 No access controls                  | 🔴 Basic user isolation only             | 🟡 Platform-level controls             | 🟢 Full RBAC and audit trails             |
-| **Cost Efficiency**           | 🟢 Minimal infrastructure needed       | 🟡 Moderate compute and storage          | 🟡 Higher with external calls          | 🔴 Significant infrastructure investment  |
-| **Implementation Complexity** | 🟢 Weekend project                     | 🟢 1 week deployment                     | 🟡 2-3 weeks setup                     | 🔴 4-6 weeks minimum                      |
-| **Debugging & Observability** | 🔴 Grep through markdown files         | 🟢 White-box memory visibility           | 🟢 Tool-level monitoring               | 🟡 Complex but comprehensive              |
-| **Knowledge Sharing**         | 🔴 No org-level sharing                | 🔴 Isolated per user                     | 🟡 Limited platform sharing            | 🟢 Full organizational knowledge graph    |
-| **Proactive Assistance**      | 🔴 No pattern recognition              | 🔴 Reactive only                         | 🟡 Basic pattern detection             | 🟢 Predictive with recommendations        |
-| **Multi-source Integration**  | 🔴 Manual copy-paste only              | 🔴 Agent memory only                     | 🟢 Salesforce, usage integrated        | 🟢 Unlimited source connectivity          |
-| **Memory Management**         | 🔴 Manual cleanup needed               | 🟢 Auto-compression built-in             | 🟢 Smart summarization                 | 🟢 Policy-driven lifecycle                |
-| **Error Recovery**            | 🔴 Corrupted files unrecoverable       | 🟡 Session recovery only                 | 🟢 Checkpoint restoration              | 🟢 Full disaster recovery                 |
-| **Access Control**            | 🔴 File permissions only               | 🔴 User-level only                       | 🟡 Basic role separation               | 🟢 Granular RBAC policies                 |
-| **Audit & Compliance**        | 🔴 No audit trail                      | 🔴 Basic logging only                    | 🟡 API-level logging                   | 🟢 Complete audit with retention          |
-| **Memory Budgets**            | 🔴 Uncontrolled growth                 | 🟡 Fixed character limits                | 🟡 Configurable limits                 | 🟢 Dynamic budget allocation              |
-| **Data Retention**            | 🔴 Never expires                       | 🟡 Simple time-based                     | 🟢 Smart archival                      | 🟢 Policy-driven retention                |
+| Concern                                | Naive Memory System                                 | Basic User & Agent Memory                               | Enhanced User, Agent & Platform Memory             | Robust Multi-tier with RBAC                                                   |
+| -------------------------------------- | --------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **Short / Long-term Memory**           | 🔴 Single unstructured file per user                | 🟡 Separate short-term and long-term, but LT is simple  | 🟢 Improved LT approach, adds platform memory      | 🟢 Same as enhanced with retention & governance                               |
+| **Memory Relevance (Signal vs Noise)** | 🔴 LLM judges relevance on read + write, no RAG     | 🟢 RAG/Semantic search for relevance                    | 🟢 RAG/Semantic search for relevance               | 🟢 Governance improves read/write paths                                       |
+| **Representation Form**                | 🔴 Unstructured text only                           | 🟡 Mixed structured/unstructured                        | 🟢 Mixed, separated short/long term structures     | 🟢 Adds structured report configs (POIs, filters, KPIs)                       |
+| **Chunking Strategy**                  | 🔴 No chunking, whole file in context               | 🟡 Fixed block sizes in core, chunk size configurable   | 🟡 Same as basic                                   | 🟢 Memory Prepossessor opens up multiple strategies                           |
+| **Staleness & Versioning**             | 🔴 Timestamps are LLM-managed, difficult versioning | 🟡 Manual timestamp tracking only                       | 🟢 Auto-timestamping, basic TTLs                   | 🟢 Full versioning with "as of" queries, automated decay                      |
+| **Conflicting Facts**                  | 🔴 Last write wins, contradictions invisible        | 🟡 Agent may notice conflicts, no resolution            | 🟢 Conflict detection alerts                       | 🟢 Conflict resolution policies, keep history with current truth view         |
+| **Cross-chat Memory**                  | 🔴 Single file grows unbounded, no chat separation  | 🟢 Distinct short-term (recall) vs long-term (archival) | 🟢 Same as basic with platform knowledge access    | 🟢 Same as enhanced with governance                                           |
+| **Cross-agent Memory**                 | 🔴 No agent isolation, shared file                  | 🟡 Agents share user memory, no agent-private state     | 🟢 Agent-private state + shared memory             | 🟢 Agent memory scopes with coordination policies                             |
+| **Layered Memory Scopes**              | 🔴 Single user scope only                           | 🔴 User scope only                                      | 🟡 User + platform scopes, no team/org             | 🟢 User, team, org, platform scopes with override rules                       |
+| **Tenant Isolation**                   | 🔴 File permissions only, no multi-tenancy          | 🟡 User-level isolation via Letta user_id               | 🟡 Platform knowledge shared without IP protection | 🟢 Strict multi-tenant isolation with customer IP protection                  |
+| **RBAC Controls**                      | 🔴 No access controls                               | 🔴 No role concept                                      | 🟡 Basic platform vs user separation               | 🟢 Full RBAC for read/write/promote/demote at all scopes                      |
+| **Regulatory Compliance (GDPR/CCPA)**  | 🔴 No data inventory, no deletion support           | 🔴 No compliance features                               | 🟡 Basic data inventory, manual deletion           | 🟢 Full compliance: discovery, deletion, audit trails                         |
+| **Memory Poisoning Protection**        | 🔴 No protection, users write anything              | 🟡 Agent-mediated writes reduce risk                    | 🟡 Platform promotion uncontrolled                 | 🟢 Review workflow for platform-level promotion                               |
+| **Read/Write Triggers**                | 🔴 Ad-hoc, model decides                            | 🟡 Agent has memory tools, may over/under use           | 🟢 Explicit policies for when to query/write       | 🟢 Policy engine with budgets and guardrails                                  |
+| **Tool Schema Robustness**             | 🔴 No tools, raw file access                        | 🟡 Simple schemas, limited complexity                   | 🟢 Well-tested Letta schemas                       | 🟢 Validated schemas with versioning                                          |
+| **Multi-agent Coordination**           | 🔴 No coordination, conflicts likely                | 🟡 Agents may clobber each other's memories             | 🟢 Agent-specific storage boundaries               | 🟢 Coordination layer prevents conflicts                                      |
+| **Latency Impact**                     | 🔴 Entire file in context, high token cost          | 🟡 Context window limits, moderate cost                 | 🟡 Vector search adds latency                      | 🟢 Optimized retrieval with caching                                           |
+| **Cost per Query**                     | 🟢 Minimal, just LLM tokens                         | 🟡 Moderate, embedding + LLM costs                      | 🔴 Higher, external API calls + embeddings         | 🔴 Highest, complex retrieval + governance overhead                           |
+| **Memory Value Metrics**               | 🔴 No metrics, no evaluation                        | 🔴 Basic logging only                                   | 🟡 Usage tracking, manual evaluation               | 🟢 Automated metrics: hit rate, quality lift, reduction in repeated questions |
+| **User Control & Transparency**        | 🔴 Users can't see what's stored                    | 🟡 Users can query memory via agent                     | 🟢 Memory inspection UI, deletion support          | 🟢 Full transparency: inspect, edit, delete with audit trail                  |
+| **Creepy Personalization Risk**        | 🔴 No controls, could store anything                | 🟡 Agent filters somewhat, still risky                  | 🟡 Opt-in for sensitive data not enforced          | 🟢 Sensitivity classification with explicit consent flows                     |
+| **Implementation Complexity**          | 🟢 Weekend project                                  | 🟢 1 week deployment                                    | 🟡 2-3 weeks setup                                 | 🔴 4-6 weeks minimum                                                          |
+| **Debugging & Observability**          | 🔴 Grep through markdown files                      | 🟢 White-box memory visibility                          | 🟢 Tool-level monitoring                           | 🟢 Comprehensive observability with memory provenance                         |
 
 ## Legend
 
@@ -197,6 +199,8 @@ graph TB
         MS --> AL[Audit Log]
         MS --> RT[Retention Policy]
         MS --> MB[Memory Budget]
+
+        MS --> CS[Memory Preprocessor]
     end
 
     subgraph "Memory Tiers"
@@ -207,6 +211,9 @@ graph TB
         subgraph "Long-term | Shared"
             MI --> | Tool Call | AR[Archival Storage<br/> User Specific]
             MI --> | Tool Call | PK[Platform Knowledge Base<br/> placer-wide]
+        end
+        subgraph "Structured Components"
+            MI --> |Tool Call | SC1["Previous Reports Configs (data attributes, POIs, filters, KPIs, etc)"]
         end
     end
 
