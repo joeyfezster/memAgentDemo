@@ -3,6 +3,7 @@
 ## Workflows
 
 - When working on a feature or bugfix, create your work plan and keep it in a local markdown file to track your progress. this is a todo list. Track implicit decisions you make along the way in this file.
+- Agents will consider that human code review is a major bottleneck of the development process. strive to write minimal, high-quality code that minimizes the need for human review.
 - This repo uses a local .venv for python dependencies and poetry for dependency management. note also the makefile
 
 ## Code Style
