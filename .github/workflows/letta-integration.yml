@@ -10,36 +10,6 @@ jobs:
   test-letta:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_DB: memagent
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      letta:
-        image: letta/letta:latest
-        env:
-          LETTA_PG_URI: postgresql://postgres:postgres@postgres:5432/memagent
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          LETTA_SERVER_PASSWORD: ${{ secrets.LETTA_SERVER_PASSWORD }}
-          SECURE: false
-        ports:
-          - 8283:8283
-        options: >-
-          --health-cmd "curl -f http://localhost:8283/health || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v4
 
@@ -58,13 +28,42 @@ jobs:
         run: |
           poetry install --with dev
 
-      - name: Create vector extension in PostgreSQL
+      - name: Start services with docker-compose
+        working-directory: ./infra
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d memagent -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          # Create .env file for docker-compose
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > ../backend/.env
+          echo "LETTA_SERVER_PASSWORD=${{ secrets.LETTA_SERVER_PASSWORD }}" >> ../backend/.env
+          echo "LETTA_SECURE=false" >> ../backend/.env
 
-      - name: Wait for Letta server
-        run: |
-          timeout 60 bash -c 'until curl -f http://localhost:8283/health 2>/dev/null; do sleep 2; done' || echo "Letta health check skipped"
+          # Start only postgres and letta services
+          docker compose up -d postgres letta
+
+          # Wait for postgres to be healthy (which means vector extension is installed)
+          echo "Waiting for PostgreSQL to be healthy..."
+          for i in {1..60}; do
+            if docker compose ps postgres | grep -q "(healthy)"; then
+              echo "PostgreSQL is healthy with vector extension!"
+              break
+            fi
+            echo "Attempt $i/60..."
+            sleep 2
+          done
+
+          # Wait for Letta to be ready
+          echo "Waiting for Letta server..."
+          for i in {1..60}; do
+            if curl -sf http://localhost:8283/ > /dev/null 2>&1; then
+              echo "Letta server is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/60..."
+            sleep 2
+          done
+
+          echo "Services failed to start, showing logs:"
+          docker compose logs
+          exit 1
 
       - name: Run Letta integration tests
         working-directory: ./backend
@@ -75,3 +74,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           poetry run pytest tests/test_letta_integration.py -v
+
+      - name: Show Letta logs on failure
+        if: failure()
+        working-directory: ./infra
+        run: |
+          docker compose logs
