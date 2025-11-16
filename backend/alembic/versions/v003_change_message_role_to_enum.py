@@ -2,8 +2,8 @@
 
 from alembic import op
 
-revision = "5622bdf1f536"
-down_revision = "20251116_create_conversations_and_messages"
+revision = "change_message_role_to_enum"
+down_revision = "create_conversations_and_messages"
 branch_labels = None
 depends_on = None
 

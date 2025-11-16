@@ -9,6 +9,7 @@ on:
 jobs:
   test-letta:
     runs-on: ubuntu-latest
+    environment: mem_env
 
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +31,13 @@ jobs:
 
       - name: Start services with docker-compose
         working-directory: ./infra
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LETTA_SERVER_PASSWORD: ${{ secrets.LETTA_SERVER_PASSWORD }}
         run: |
           # Create .env files for docker-compose
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > ../backend/.env
-          echo "LETTA_SERVER_PASSWORD=${{ secrets.LETTA_SERVER_PASSWORD }}" >> ../backend/.env
+          echo "OPENAI_API_KEY=${OPENAI_API_KEY}" > ../backend/.env
+          echo "LETTA_SERVER_PASSWORD=${LETTA_SERVER_PASSWORD}" >> ../backend/.env
           echo "LETTA_SECURE=false" >> ../backend/.env
 
           # Create dummy frontend .env to satisfy docker-compose validation
