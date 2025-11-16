@@ -17,7 +17,9 @@
 1. Cost and latency of memory operations must be managed to avoid runaway expenses and poor UX
 1. Evaluating the effectiveness of memory in improving agent performance is critical
 
-## Tech Stack & Frameworks
+## Development Decisions
+
+### Tech Stack & Frameworks
 
 1. FastAPI for backend due to its performance, async support, and modern features
 1. React with Vite for frontend for fast development and modern tooling
@@ -40,8 +42,22 @@
 
 ## Additional Recommended Improvements
 
+### Agent Model
+
+1. This solution uses a single agent per user model. While this simplifies implementation and context continuity, it makes task-specialization more difficult. 'learned expertise' gets cluttered as the single agent has to retain the expertise across multiple tasks across multiple users. Task-specialized agents remove one complexity axis (task type).
+1. the letta agent model is flexible enough
+
+```mermaid
+
+```
+
+### Governance
+
+1. Add a periodic cleanup job to remove PII from cross-user shared memory blocks
+
 ### Data Model
 
+1. User taxonomy - having defined personas is great, but the `user_profile` block can be leveraged to discover new types of users over time. This will require a periodic discovery/review job.
 1. shared object model between front and backend (e.g. User, Conversation, Message, etc) to reduce duplication and potential drift
 
 ### CI
