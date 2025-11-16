@@ -10,8 +10,10 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.db.seed import seed_personas
 from app.db.session import get_engine, get_session_factory
+from app.services.persona_sync import create_persona_sync_worker
 
 logger = logging.getLogger(__name__)
+persona_sync_worker = create_persona_sync_worker()
 
 
 @asynccontextmanager
@@ -23,9 +25,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         session_factory = get_session_factory()
         async with session_factory() as session:
             await seed_personas(session)
+        persona_sync_worker.start()
     except Exception as exc:
         logger.error("Database connection failed", exc_info=exc)
-    yield
+    try:
+        yield
+    finally:
+        await persona_sync_worker.stop()
 
 
 def create_app() -> FastAPI:

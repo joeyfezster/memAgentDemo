@@ -29,6 +29,7 @@ async def create_user(
     persona_handle: str,
     role: str | None,
     hashed_password: str,
+    letta_agent_id: str | None = None,
 ) -> User:
     user = User(
         email=email,
@@ -36,7 +37,18 @@ async def create_user(
         persona_handle=persona_handle,
         role=role,
         hashed_password=hashed_password,
+        letta_agent_id=letta_agent_id,
     )
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def update_letta_agent_id(
+    session: AsyncSession, user: User, agent_id: str | None
+) -> User:
+    user.letta_agent_id = agent_id
     session.add(user)
     await session.commit()
     await session.refresh(user)

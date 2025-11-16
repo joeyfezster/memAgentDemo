@@ -1,101 +1,108 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
+from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.security import get_password_hash
 from app.crud.user import get_user_by_email
+from app.db.persona_loader import load_persona_definitions
+from app.models.persona import Persona, UserPersona
 from app.models.user import User
 
 
-@dataclass
-class PersonaRecord:
-    email: str
-    display_name: str
-    persona_handle: str
-    role: str | None
-
-
-def _parse_persona(file_path: Path) -> PersonaRecord | None:
-    lines = file_path.read_text(encoding="utf-8").splitlines()
-    display_name: str | None = None
-    role: str | None = None
-    email: str | None = None
-    persona_handle: str | None = None
-    in_handles = False
-
-    for raw_line in lines:
-        line = raw_line.strip()
-        if line.startswith("# Persona:"):
-            content = line.split(":", 1)[1].strip()
-            if "–" in content:
-                name_part, role_part = content.split("–", 1)
-                display_name = name_part.strip()
-                role = role_part.strip()
-            else:
-                display_name = content
-        elif line.startswith("## "):
-            in_handles = line.lower() == "## demo handle"
-        elif in_handles and line.startswith("- "):
-            value = line[2:].strip()
-            if email is None:
-                email = value
-            elif persona_handle is None:
-                persona_handle = value
-
-        if display_name and email and persona_handle:
-            break
-
-    if not (display_name and email and persona_handle):
-        return None
-
-    return PersonaRecord(
-        email=email,
-        display_name=display_name,
-        persona_handle=persona_handle,
-        role=role,
-    )
-
-
-def load_personas() -> list[PersonaRecord]:
-    repo_root = Path(__file__).resolve().parents[3]
-    personas_dir = repo_root / "docs" / "product" / "personas"
-    if not personas_dir.exists():
-        return []
-
-    records: list[PersonaRecord] = []
-    for file_path in personas_dir.glob("*.md"):
-        record = _parse_persona(file_path)
-        if record:
-            records.append(record)
-    return records
-
-
 async def seed_personas(session: AsyncSession) -> None:
-    personas = load_personas()
-    if not personas:
+    definitions = load_persona_definitions()
+    if not definitions:
         return
 
     settings = get_settings()
-    for persona in personas:
-        user = await get_user_by_email(session, persona.email)
-        hashed_password = get_password_hash(settings.persona_seed_password)
-        if user:
-            user.display_name = persona.display_name
-            user.persona_handle = persona.persona_handle
-            user.role = persona.role
-            user.hashed_password = hashed_password
-        else:
-            session.add(
-                User(
-                    email=persona.email,
-                    display_name=persona.display_name,
-                    persona_handle=persona.persona_handle,
-                    role=persona.role,
-                    hashed_password=hashed_password,
-                )
-            )
+    hashed_password = get_password_hash(settings.persona_seed_password)
+
+    for definition in definitions:
+        persona = await _upsert_persona(session, definition)
+        user = await _upsert_persona_user(session, definition, hashed_password)
+        await _ensure_user_persona_link(session, user.id, persona.id)
+
     await session.commit()
+
+
+async def _upsert_persona(session: AsyncSession, definition) -> Persona:
+    result = await session.execute(
+        select(Persona).where(Persona.handle == definition.persona_handle)
+    )
+    persona = result.scalar_one_or_none()
+    if persona:
+        persona.name = definition.display_name
+        persona.industry = definition.industry
+        persona.professional_role = definition.professional_role
+        persona.description = definition.description
+        persona.typical_kpis = definition.typical_kpis
+        persona.typical_motivations = definition.typical_motivations
+        persona.quintessential_queries = definition.quintessential_queries
+        return persona
+
+    persona = Persona(
+        handle=definition.persona_handle,
+        name=definition.display_name,
+        industry=definition.industry,
+        professional_role=definition.professional_role,
+        description=definition.description,
+        typical_kpis=definition.typical_kpis,
+        typical_motivations=definition.typical_motivations,
+        quintessential_queries=definition.quintessential_queries,
+    )
+    session.add(persona)
+    await session.flush()
+    return persona
+
+
+async def _upsert_persona_user(
+    session: AsyncSession, definition, hashed_password: str
+) -> User:
+    user = await get_user_by_email(session, definition.email)
+    if user:
+        user.display_name = definition.display_name
+        user.persona_handle = definition.persona_handle
+        user.role = definition.professional_role or user.role
+        user.hashed_password = hashed_password
+        return user
+
+    user = User(
+        email=definition.email,
+        display_name=definition.display_name,
+        persona_handle=definition.persona_handle,
+        role=definition.professional_role,
+        hashed_password=hashed_password,
+    )
+    session.add(user)
+    await session.flush()
+    return user
+
+
+async def _ensure_user_persona_link(
+    session: AsyncSession, user_id: str, persona_id: str
+) -> None:
+    result = await session.execute(
+        select(UserPersona)
+        .where(UserPersona.user_id == user_id)
+        .where(UserPersona.persona_id == persona_id)
+    )
+    link = result.scalar_one_or_none()
+    now = datetime.now(UTC)
+    if link:
+        link.confidence_score = 1.0
+        link.last_confirmed = now
+        return
+
+    session.add(
+        UserPersona(
+            user_id=user_id,
+            persona_id=persona_id,
+            confidence_score=1.0,
+            discovered_at=now,
+            last_confirmed=now,
+        )
+    )

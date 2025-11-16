@@ -10,6 +10,14 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1)
 
 
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    display_name: str = Field(min_length=1)
+    password: str = Field(min_length=8)
+    persona_handle: str | None = None
+    role: str | None = None
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

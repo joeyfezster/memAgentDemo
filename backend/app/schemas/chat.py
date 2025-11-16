@@ -55,3 +55,9 @@ class SendMessageRequest(BaseModel):
 class SendMessageResponse(BaseModel):
     user_message: MessageSchema
     assistant_message: MessageSchema
+    tool_calls: list["ToolCallSchema"] = Field(default_factory=list)
+
+
+class ToolCallSchema(BaseModel):
+    name: str
+    arguments: dict | None = None
