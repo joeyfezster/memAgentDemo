@@ -42,12 +42,15 @@ def test_create_agent(letta_client):
 def test_mem_block_impacts_agent_behavior(letta_client):
     memory_blocks = [
         {"label": "human", "value": "The user is testing the agent."},
-        {"label": "persona", "value": "I iNtErChAnGe uPpEr cAsE aNd lOwEr CaSeS."},
+        {
+            "label": "persona",
+            "value": "I iNtErChAnGe uPpEr cAsE aNd lOwEr CaSeS iN mY rEsPoNsEs.",
+        },
     ]
     agent_id = create_simple_agent(letta_client, memory_blocks=memory_blocks)
 
     try:
-        message = "respond with 3 words at least 5 chars long each"
+        message = "tell me something. respond with 3 words at least 5 chars long each."
         response = send_message_to_agent(letta_client, agent_id, message)
 
         assert response is not None
