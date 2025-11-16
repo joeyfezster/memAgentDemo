@@ -1,5 +1,9 @@
 import os
+from datetime import date
+
 import pytest
+
+from agent.tools import PlaceInsightsTool, PlacesSearchTool
 from app.core.letta_client import (
     create_letta_client,
     create_simple_agent,
@@ -11,7 +15,12 @@ from app.core.letta_client import (
 def letta_client():
     base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
     token = os.getenv("LETTA_SERVER_PASSWORD")
-    return create_letta_client(base_url, token)
+    client = create_letta_client(base_url, token)
+    try:
+        client.agents.list()
+    except Exception as exc:  # pragma: no cover
+        pytest.skip(f"Letta server unavailable: {exc}")
+    return client
 
 
 @pytest.fixture
@@ -106,3 +115,21 @@ def test_agent_conversation_continuity(letta_client, letta_agent_id):
     )
     assert second_response.message_content
     assert "alice" in second_response.message_content.lower()
+
+
+def test_simulated_agent_uses_search_and_summary_tools():
+    search_tool = PlacesSearchTool()
+    summary_tool = PlaceInsightsTool()
+    search_result = search_tool.run(
+        geo_filter={"type": "metro", "config": {"id": "chicago"}},
+        text_query="North",
+        limit=3,
+    )
+    place_ids = [place["id"] for place in search_result["places"][:2]]
+    summary = summary_tool.run(
+        place_ids=place_ids,
+        time_range={"start": date(2024, 1, 1), "end": date(2024, 6, 1)},
+        include_benchmark=True,
+    )
+    assert len(summary["places"]) == len(place_ids)
+    assert all(place["visits"]["total"] > 0 for place in summary["places"])
