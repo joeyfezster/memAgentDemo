@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.crud import conversation as conversation_crud
 from app.crud import message as message_crud
+from app.crud import persona as persona_crud
+from app.crud.user import update_letta_agent_id
 from app.db.session import get_session
 from app.models.message import MessageRole
 from app.models.user import User
+from app.services.pi_agent import pi_agent_service
 from app.schemas.chat import (
     ChatMessage,
     ChatResponse,
@@ -21,6 +24,7 @@ from app.schemas.chat import (
     MessageSchema,
     SendMessageRequest,
     SendMessageResponse,
+    ToolCallSchema,
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -108,12 +112,25 @@ async def send_message_to_conversation(
         content=payload.content,
     )
 
-    assistant_reply = f"hi {current_user.display_name}"
+    if not pi_agent_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Pi agent is not configured",
+        )
+
+    agent_id = await _ensure_user_agent(session, current_user)
+    if not agent_id:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to provision agent",
+        )
+
+    agent_response = await pi_agent_service.send_message(agent_id, payload.content)
     assistant_message = await message_crud.create_message(
         session,
         conversation_id=conversation_id,
         role=MessageRole.AGENT,
-        content=assistant_reply,
+        content=agent_response.message_content,
     )
 
     message_count = await message_crud.get_message_count(session, conversation_id)
@@ -129,4 +146,20 @@ async def send_message_to_conversation(
     return SendMessageResponse(
         user_message=MessageSchema.model_validate(user_message),
         assistant_message=MessageSchema.model_validate(assistant_message),
+        tool_calls=[
+            ToolCallSchema(name=call.name, arguments=call.arguments)
+            for call in agent_response.tool_calls
+        ],
     )
+
+
+async def _ensure_user_agent(session: AsyncSession, user: User) -> str | None:
+    if user.letta_agent_id:
+        return user.letta_agent_id
+    persona_links = await persona_crud.list_user_personas(session, user.id)
+    personas = [link.persona for link in persona_links if link.persona]
+    if not pi_agent_service.is_configured():
+        return None
+    agent_id = await pi_agent_service.provision_user_agent(user, personas)
+    updated_user = await update_letta_agent_id(session, user, agent_id)
+    return updated_user.letta_agent_id

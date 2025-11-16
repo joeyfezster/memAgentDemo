@@ -18,6 +18,9 @@ The application reads configuration from environment variables or a `.env` file.
 | `JWT_SECRET_KEY` | Symmetric key for signing bearer tokens. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Minutes before issued tokens expire. |
 | `PERSONA_SEED_PASSWORD` | Plaintext password applied to seeded personas from `/docs/product/personas`. |
+| `LETTA_BASE_URL` | Base URL for the Letta agent server used for Pi agent provisioning. |
+| `LETTA_SERVER_PASSWORD` | Password or API token for authenticating against the Letta server. |
+| `PERSONA_SYNC_INTERVAL_SECONDS` | Interval (in seconds) for the background persona discovery sync loop. |
 
 ## Testing
 
