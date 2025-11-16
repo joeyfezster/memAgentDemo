@@ -31,10 +31,13 @@ jobs:
       - name: Start services with docker-compose
         working-directory: ./infra
         run: |
-          # Create .env file for docker-compose
+          # Create .env files for docker-compose
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > ../backend/.env
           echo "LETTA_SERVER_PASSWORD=${{ secrets.LETTA_SERVER_PASSWORD }}" >> ../backend/.env
           echo "LETTA_SECURE=false" >> ../backend/.env
+
+          # Create dummy frontend .env to satisfy docker-compose validation
+          touch ../frontend/.env
 
           # Start only postgres and letta services
           docker compose up -d postgres letta
