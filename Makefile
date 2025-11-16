@@ -9,7 +9,7 @@ PIP := $(VENV_PATH)/bin/pip
 POETRY := $(ROOT_DIR)/$(VENV_PATH)/bin/poetry
 PRECOMMIT := $(ROOT_DIR)/$(VENV_PATH)/bin/pre-commit
 
-.PHONY: bootstrap activate up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
+.PHONY: bootstrap activate up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate test-letta
 
 bootstrap:
 	@if [ ! -d "$(VENV_PATH)" ]; then \
@@ -94,3 +94,6 @@ frontend-shell:
 
 migrate:
 	$(call run_backend,poetry run alembic upgrade head)
+
+test-letta:
+	@cd backend && source ../.venv/bin/activate && "$(POETRY)" run pytest tests/test_letta_integration.py -v

@@ -1,7 +1,7 @@
 """create users table
 
 Revision ID: create_users
-Revises: 
+Revises:
 Create Date: 2025-02-14
 """
 

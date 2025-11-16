@@ -1,0 +1,89 @@
+name: Letta Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-letta:
+    runs-on: ubuntu-latest
+    environment: mem_env
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          poetry install --with dev
+
+      - name: Start services with docker-compose
+        working-directory: ./infra
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LETTA_SERVER_PASSWORD: ${{ secrets.LETTA_SERVER_PASSWORD }}
+        run: |
+          # Create .env files for docker-compose
+          echo "OPENAI_API_KEY=${OPENAI_API_KEY}" > ../backend/.env
+          echo "LETTA_SERVER_PASSWORD=${LETTA_SERVER_PASSWORD}" >> ../backend/.env
+          echo "LETTA_SECURE=false" >> ../backend/.env
+
+          # Create dummy frontend .env to satisfy docker-compose validation
+          touch ../frontend/.env
+
+          # Start only postgres and letta services
+          docker compose up -d postgres letta
+
+          # Wait for postgres to be healthy (which means vector extension is installed)
+          echo "Waiting for PostgreSQL to be healthy..."
+          for i in {1..60}; do
+            if docker compose ps postgres | grep -q "(healthy)"; then
+              echo "PostgreSQL is healthy with vector extension!"
+              break
+            fi
+            echo "Attempt $i/60..."
+            sleep 2
+          done
+
+          # Wait for Letta to be ready
+          echo "Waiting for Letta server..."
+          for i in {1..60}; do
+            if curl -sf http://localhost:8283/ > /dev/null 2>&1; then
+              echo "Letta server is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/60..."
+            sleep 2
+          done
+
+          echo "Services failed to start, showing logs:"
+          docker compose logs
+          exit 1
+
+      - name: Run Letta integration tests
+        working-directory: ./backend
+        env:
+          LETTA_BASE_URL: http://localhost:8283
+          LETTA_SERVER_PASSWORD: ${{ secrets.LETTA_SERVER_PASSWORD }}
+          LETTA_SECURE: false
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          poetry run pytest tests/test_letta_integration.py -v
+
+      - name: Show Letta logs on failure
+        if: failure()
+        working-directory: ./infra
+        run: |
+          docker compose logs
