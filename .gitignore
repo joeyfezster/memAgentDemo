@@ -43,3 +43,4 @@ reports/
 
 # uv / poetry lock backups
 *.lock.bak
+frontend/.vite/

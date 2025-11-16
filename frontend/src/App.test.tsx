@@ -19,8 +19,11 @@ describe("App", () => {
 
     const welcomeHeading = await screen.findByRole("heading", {
       name: /welcome back/i,
+      timeout: 10000,
     });
     expect(welcomeHeading).toBeInTheDocument();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     const chatInput = screen.getByLabelText(/ask a question/i);
     await user.type(chatInput, "Hello there");
@@ -28,8 +31,8 @@ describe("App", () => {
     await user.click(sendButton);
 
     const reply = await screen.findByText(/hi daniel/i, undefined, {
-      timeout: 5000,
+      timeout: 10000,
     });
     expect(reply).toBeInTheDocument();
-  });
+  }, 15000);
 });

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { sendChatMessage, type User } from "../api/client";
 
@@ -59,7 +59,9 @@ export default function ChatWindow({ user, token, onLogout }: ChatWindowProps) {
       <header className="chat__header">
         <div>
           <h2 className="chat__title">Welcome back, {user.display_name}</h2>
-          <p className="chat__subtitle">Persona handle: {user.persona_handle}</p>
+          <p className="chat__subtitle">
+            Persona handle: {user.persona_handle}
+          </p>
         </div>
         <button className="chat__logout" type="button" onClick={onLogout}>
           Log out
@@ -68,10 +70,15 @@ export default function ChatWindow({ user, token, onLogout }: ChatWindowProps) {
 
       <div className="chat__messages" aria-live="polite">
         {messages.length === 0 && (
-          <p className="chat__empty">Start the conversation with your AI assistant.</p>
+          <p className="chat__empty">
+            Start the conversation with your AI assistant.
+          </p>
         )}
         {messages.map((message) => (
-          <div key={message.id} className={`chat__message chat__message--${message.sender}`}>
+          <div
+            key={message.id}
+            className={`chat__message chat__message--${message.sender}`}
+          >
             <span className="chat__message-label">
               {message.sender === "user" ? user.display_name : "Assistant"}
             </span>
