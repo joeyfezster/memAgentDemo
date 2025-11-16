@@ -38,11 +38,15 @@ export default function ChatWindow({
       return;
     }
 
+    let cancelled = false;
+
     const loadMessages = async () => {
       setIsLoading(true);
       setError(null);
       try {
         const response = await getConversationMessages(token, conversationId);
+        if (cancelled) return;
+
         const chatMessages: ChatMessage[] = response.messages.map(
           (msg: Message) => ({
             id: msg.id,
@@ -52,17 +56,25 @@ export default function ChatWindow({
         );
         setMessages(chatMessages);
       } catch (loadError) {
+        if (cancelled) return;
+
         const message =
           loadError instanceof Error
             ? loadError.message
             : "Failed to load messages";
         setError(message);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
   }, [conversationId, token]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

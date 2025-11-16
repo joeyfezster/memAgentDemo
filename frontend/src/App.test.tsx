@@ -1,11 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import App from "./App";
 
 describe("App", () => {
-  it("allows a user to sign in and receive a chat response", async () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+  it("allows a user to sign in and create a conversation", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -24,14 +27,130 @@ describe("App", () => {
     );
     expect(welcomeHeading).toBeInTheDocument();
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    const newChatButton = await screen.findByRole(
+      "button",
+      {
+        name: /new chat/i,
+      },
+      { timeout: 5000 },
+    );
+    expect(newChatButton).toBeInTheDocument();
 
-    const chatInput = screen.getByLabelText(/ask a question/i);
+    await user.click(newChatButton);
+
+    const chatInput = await screen.findByLabelText(
+      /ask a question/i,
+      {},
+      { timeout: 5000 },
+    );
+    expect(chatInput).toBeInTheDocument();
+
     await user.type(chatInput, "Hello there");
     const sendButton = screen.getByRole("button", { name: /send/i });
     await user.click(sendButton);
 
     const reply = await screen.findByText(/hi daniel/i, {}, { timeout: 10000 });
     expect(reply).toBeInTheDocument();
-  }, 15000);
+
+    const conversationInSidebar = await screen.findByText(
+      /hello there/i,
+      {},
+      { timeout: 5000 },
+    );
+    expect(conversationInSidebar).toBeInTheDocument();
+  }, 25000);
+
+  it("allows a user to view previous conversation messages", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const emailInput = await screen.findByLabelText(/email/i);
+    const passwordInput = screen.getByLabelText(/password/i);
+    const submitButton = screen.getByRole("button", { name: /sign in/i });
+
+    await user.type(emailInput, "daniel.insights@goldtobacco.com");
+    await user.type(passwordInput, "test-password");
+    await user.click(submitButton);
+
+    const welcomeHeading = await screen.findByRole(
+      "heading",
+      { name: /welcome back/i },
+      { timeout: 10000 },
+    );
+    expect(welcomeHeading).toBeInTheDocument();
+
+    const newChatButton = await screen.findByRole(
+      "button",
+      {
+        name: /new chat/i,
+      },
+      { timeout: 5000 },
+    );
+    await user.click(newChatButton);
+
+    const chatInput = await screen.findByLabelText(
+      /ask a question/i,
+      {},
+      { timeout: 5000 },
+    );
+    await user.type(chatInput, "First message");
+    const sendButton = screen.getByRole("button", { name: /send/i });
+    await user.click(sendButton);
+
+    const firstReply = await screen.findByText(
+      /hi daniel/i,
+      {},
+      { timeout: 10000 },
+    );
+    expect(firstReply).toBeInTheDocument();
+
+    const conversationInSidebar = await screen.findByText(
+      /first message/i,
+      {},
+      { timeout: 5000 },
+    );
+    expect(conversationInSidebar).toBeInTheDocument();
+
+    await user.click(newChatButton);
+
+    const secondChatInput = await screen.findByLabelText(
+      /ask a question/i,
+      {},
+      { timeout: 5000 },
+    );
+    await user.type(secondChatInput, "Second conversation");
+    const secondSendButton = screen.getByRole("button", { name: /send/i });
+    await user.click(secondSendButton);
+
+    await screen.findByText(/second conversation/i, {}, { timeout: 10000 });
+
+    const firstConversationButton = await screen.findByText(
+      /first message/i,
+      {},
+      { timeout: 5000 },
+    );
+    await user.click(firstConversationButton);
+
+    await waitFor(
+      () => {
+        const secondMessage = screen.queryByText(/second conversation/i);
+        expect(secondMessage).not.toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    const originalMessage = await screen.findByText(
+      /first message/i,
+      {},
+      { timeout: 5000 },
+    );
+    expect(originalMessage).toBeInTheDocument();
+
+    const originalReply = await screen.findByText(
+      /hi daniel/i,
+      {},
+      { timeout: 5000 },
+    );
+    expect(originalReply).toBeInTheDocument();
+  }, 30000);
 });
