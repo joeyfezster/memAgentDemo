@@ -15,6 +15,8 @@ sqlalchemy = "^2.0.30"
 alembic = "^1.13.1"
 asyncpg = "^0.29.0"
 psycopg = { extras = ["binary"], version = "^3.1.19" }
+# Letta framework for stateful AI agents with memory
+letta-client = "^0.6.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

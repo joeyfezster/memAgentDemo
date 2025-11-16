@@ -13,6 +13,15 @@ class Settings(BaseSettings):
     debug: bool = True
     database_url: str = "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres"
 
+    # Letta Configuration
+    # API key for Letta service - REQUIRED for agent functionality
+    # Get your API key from https://app.letta.com/settings
+    letta_api_key: str = ""
+
+    # Optional: Custom Letta base URL (defaults to Letta's hosted service)
+    # Set this if you're running a self-hosted Letta server
+    letta_base_url: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
