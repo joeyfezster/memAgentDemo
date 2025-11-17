@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import pytest
 
@@ -13,6 +14,8 @@ from app.crud.persona import get_persona_by_handle
 from app.crud.user import create_user
 from app.db.session import get_session
 from app.models.persona import Persona
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -55,9 +58,9 @@ async def test_list_available_personas_returns_all_personas():
     test_personas = [p for p in data["personas"] if "test_list" in p["persona_handle"]]
     assert len(test_personas) >= 2
 
-    print(f"\n✓ Found {len(data['personas'])} total personas")
-    print(f"✓ Taxonomy format: {data['taxonomy_format']}")
-    print(f"✓ Examples: {data['examples']}")
+    logger.info("Found %s total personas", len(data["personas"]))
+    logger.info("Taxonomy format: %s", data["taxonomy_format"])
+    logger.info("Examples: %s", data["examples"])
 
 
 @pytest.mark.asyncio
@@ -93,9 +96,9 @@ async def test_update_user_persona_profile_associates_with_existing_persona(
         result = update_user_persona_profile_in_db(user.id, persona.persona_handle, 0.9)
         data = json.loads(result)
 
-        print(f"\n{'='*80}")
-        print(f"Tool result: {json.dumps(data, indent=2)}")
-        print(f"{'='*80}\n")
+        logger.info("%s", "=" * 80)
+        logger.info("Tool result: %s", json.dumps(data, indent=2))
+        logger.info("%s", "=" * 80)
 
         assert data["success"] is True
         assert data["persona_handle"] == persona.persona_handle
@@ -104,8 +107,8 @@ async def test_update_user_persona_profile_associates_with_existing_persona(
         assert data["confidence_score"] == 0.9
 
         agent_blocks = letta_client.agents.blocks.list(agent_id=agent_id)
-        print(f"\nChecking agent: {agent_id}")
-        print(f"Found {len(agent_blocks)} blocks: {[b.label for b in agent_blocks]}")
+        logger.info("Checking agent: %s", agent_id)
+        logger.info("Found %s blocks: %s", len(agent_blocks), [b.label for b in agent_blocks])
         persona_block = next(
             (
                 b
@@ -117,9 +120,9 @@ async def test_update_user_persona_profile_associates_with_existing_persona(
 
         assert persona_block is not None
 
-        print(f"\n✓ User associated with persona: {persona.persona_handle}")
-        print(f"✓ Confidence score: {data['confidence_score']}")
-        print(f"✓ Persona block attached to agent: {persona_block.label}")
+        logger.info("User associated with persona: %s", persona.persona_handle)
+        logger.info("Confidence score: %s", data["confidence_score"])
+        logger.info("Persona block attached to agent: %s", persona_block.label)
 
         break
 
@@ -155,9 +158,9 @@ async def test_update_user_persona_profile_creates_new_persona_with_valid_handle
         assert created_persona.persona_handle == new_handle
 
         agent_blocks = letta_client.agents.blocks.list(agent_id=agent_id)
-        print(f"\nAgent {agent_id} blocks:")
+        logger.info("Agent %s blocks:", agent_id)
         for b in agent_blocks:
-            print(f"  - {b.label} (id: {b.id})")
+            logger.info("  - %s (id: %s)", b.label, b.id)
 
         persona_block = next(
             (b for b in agent_blocks if b.label == f"{new_handle}_service_experience"),
@@ -166,10 +169,10 @@ async def test_update_user_persona_profile_creates_new_persona_with_valid_handle
 
         assert persona_block is not None
 
-        print(f"\n✓ New persona created: {new_handle}")
-        print(f"✓ Industry: {data['industry']}")
-        print(f"✓ Role: {data['professional_role']}")
-        print(f"✓ Shared block created: {persona_block.label}")
+        logger.info("New persona created: %s", new_handle)
+        logger.info("Industry: %s", data["industry"])
+        logger.info("Role: %s", data["professional_role"])
+        logger.info("Shared block created: %s", persona_block.label)
 
         break
 
@@ -195,7 +198,7 @@ async def test_update_user_persona_profile_returns_proper_json():
         assert "error" in data
         assert data["success"] is False
 
-        print(f"\n✓ Proper JSON returned for nonexistent user: {data}")
+        logger.info("Proper JSON returned for nonexistent user: %s", data)
 
         break
 
@@ -208,4 +211,4 @@ async def test_list_available_personas_handles_errors_gracefully():
     data = json.loads(result)
     assert "personas" in data or "error" in data
 
-    print(f"\n✓ Function handled execution: {list(data.keys())}")
+    logger.info("Function handled execution: %s", list(data.keys()))

@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 from datetime import datetime
 
+import logging
+import os
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +35,8 @@ from app.schemas.chat import (
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/messages", response_model=ChatResponse)
@@ -128,7 +134,7 @@ async def send_message_to_conversation(
             )
             assistant_reply = response.message_content
         except Exception as e:
-            print(f"Error calling Letta agent: {e}")
+            logger.error("Error calling Letta agent: %s", e)
             assistant_reply = "Sorry, I encountered an error processing your message."
     else:
         try:
@@ -148,7 +154,7 @@ async def send_message_to_conversation(
             response = send_message_to_agent(letta_client, agent_id, payload.content)
             assistant_reply = response.message_content
         except Exception as e:
-            print(f"Error creating/using Letta agent: {e}")
+            logger.error("Error creating/using Letta agent: %s", e)
             assistant_reply = f"hi {current_user.display_name}"
 
     assistant_message = await message_crud.create_message(

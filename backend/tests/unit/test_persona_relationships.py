@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 from httpx import AsyncClient
 
@@ -7,6 +9,8 @@ from app.main import app
 from app.db.session import get_session
 from app.models.persona import Persona
 from app.crud.persona import assign_persona_to_user, get_user_personas
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -66,10 +70,10 @@ async def test_user_persona_bridge_relationships():
                 user_persona_bridge.confidence_score == 0.85
             ), "Confidence score should be set correctly"
 
-            print(f"\nCreated UserPersonaBridge: {user_persona_bridge.id}")
-            print(f"  User ID: {user_persona_bridge.user_id}")
-            print(f"  Persona ID: {user_persona_bridge.persona_id}")
-            print(f"  Confidence: {user_persona_bridge.confidence_score}")
+            logger.info("Created UserPersonaBridge: %s", user_persona_bridge.id)
+            logger.info("  User ID: %s", user_persona_bridge.user_id)
+            logger.info("  Persona ID: %s", user_persona_bridge.persona_id)
+            logger.info("  Confidence: %s", user_persona_bridge.confidence_score)
 
             user_personas = await get_user_personas(session, user_id=user_id)
 
@@ -83,9 +87,13 @@ async def test_user_persona_bridge_relationships():
                 user_personas[0].persona.industry == "QSR / Fast Casual"
             ), "Persona relationship should load full persona details"
 
-            print("\n✓ UserPersonaBridge relationship validated:")
-            print(f"  - User has {len(user_personas)} persona(s)")
-            print(f"  - Persona handle: {user_personas[0].persona.persona_handle}")
-            print(f"  - Persona industry: {user_personas[0].persona.industry}")
+            logger.info("UserPersonaBridge relationship validated")
+            logger.info("  - User has %s persona(s)", len(user_personas))
+            logger.info(
+                "  - Persona handle: %s", user_personas[0].persona.persona_handle
+            )
+            logger.info(
+                "  - Persona industry: %s", user_personas[0].persona.industry
+            )
 
             break

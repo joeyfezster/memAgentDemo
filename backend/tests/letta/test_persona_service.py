@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from app.core.letta_client import create_pi_agent
@@ -10,6 +12,8 @@ from app.models.persona import Persona
 from app.services.persona_service import (
     attach_persona_blocks_to_agents_of_users_with_persona_handle,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -81,9 +85,9 @@ async def test_attach_persona_blocks_attaches_to_all_agents(letta_client):
         assert agent2_shared_block is not None
         assert agent1_shared_block.id == agent2_shared_block.id
 
-        print("\n✓ Both agents have persona block attached")
-        print(f"✓ Shared block ID: {agent1_shared_block.id}")
-        print(f"✓ Block label: {agent1_shared_block.label}")
+        logger.info("Both agents have persona block attached")
+        logger.info("Shared block ID: %s", agent1_shared_block.id)
+        logger.info("Block label: %s", agent1_shared_block.label)
 
         break
 
@@ -137,8 +141,10 @@ async def test_attach_persona_blocks_is_idempotent(letta_client):
         assert block_count_before == block_count_after
         assert block_ids_before == block_ids_after
 
-        print(f"\n✓ Idempotence verified: block count unchanged ({block_count_before})")
-        print(f"✓ Block IDs unchanged: {block_ids_before}")
+        logger.info(
+            "Idempotence verified: block count unchanged (%s)", block_count_before
+        )
+        logger.info("Block IDs unchanged: %s", block_ids_before)
 
         break
 
@@ -197,7 +203,7 @@ async def test_attach_persona_blocks_skips_users_without_agent_id(letta_client):
 
         assert agent_shared_block is not None
 
-        print("\n✓ User with agent got block attached")
-        print("✓ User without agent was skipped (no error)")
+        logger.info("User with agent got block attached")
+        logger.info("User without agent was skipped (no error)")
 
         break

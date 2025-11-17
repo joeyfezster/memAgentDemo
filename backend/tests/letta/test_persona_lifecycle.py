@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from asyncio import sleep
 
 import pytest
@@ -10,6 +11,8 @@ from app.crud.user import create_user
 from app.db.session import get_session
 from app.models.persona import Persona
 from app.services.persona_service import get_or_create_persona_shared_block
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -56,19 +59,21 @@ async def test_after_insert_event_fires_and_creates_block(letta_client):
 
         try:
             all_blocks = letta_client.blocks.list()
-            print(f"\nAll blocks in system: {len(all_blocks)}")
+            logger.info("All blocks in system: %s", len(all_blocks))
             persona_label = f"{persona_handle}_service_experience"
             matching_blocks = [b for b in all_blocks if b.label == persona_label]
-            print(f"Blocks with label '{persona_label}': {len(matching_blocks)}")
+            logger.info(
+                "Blocks with label '%s': %s", persona_label, len(matching_blocks)
+            )
             for b in matching_blocks:
-                print(f"  - {b.label} (id: {b.id})")
+                logger.info("  - %s (id: %s)", b.label, b.id)
         except Exception as e:
-            print(f"Error listing blocks: {e}")
+            logger.error("Error listing blocks: %s", e)
 
         agent_blocks = letta_client.agents.blocks.list(agent_id=agent_id)
-        print(f"\nAgent {agent_id} has {len(agent_blocks)} blocks:")
+        logger.info("Agent %s has %s blocks:", agent_id, len(agent_blocks))
         for b in agent_blocks:
-            print(f"  - {b.label} (id: {b.id})")
+            logger.info("  - %s (id: %s)", b.label, b.id)
 
         persona_block = next(
             (
@@ -83,10 +88,12 @@ async def test_after_insert_event_fires_and_creates_block(letta_client):
         assert persona_block.label == f"{persona_handle}_service_experience"
         assert persona_handle in persona_block.value
 
-        print(f"\n✓ UserPersonaBridge created for {persona_handle}")
-        print("✓ Lifecycle hook triggered")
-        print(f"✓ Letta block auto-created and attached: {persona_block.label}")
-        print(f"✓ Block value: {persona_block.value[:80]}...")
+        logger.info("UserPersonaBridge created for %s", persona_handle)
+        logger.info("Lifecycle hook triggered")
+        logger.info(
+            "Letta block auto-created and attached: %s", persona_block.label
+        )
+        logger.info("Block value: %s...", persona_block.value[:80])
 
         break
 
@@ -130,10 +137,10 @@ async def test_lifecycle_hook_creates_correct_block_properties(letta_client):
         assert "PII" in block.description
         assert block.limit == 8000
 
-        print(f"\n✓ Block label correct: {block.label}")
-        print(f"✓ Block value correct: {block.value[:60]}...")
-        print("✓ Block description contains required warnings")
-        print(f"✓ Block limit: {block.limit}")
+        logger.info("Block label correct: %s", block.label)
+        logger.info("Block value correct: %s...", block.value[:60])
+        logger.info("Block description contains required warnings")
+        logger.info("Block limit: %s", block.limit)
 
         break
 
@@ -167,9 +174,9 @@ async def test_lifecycle_hook_handles_errors_gracefully(letta_client):
 
             assert user_without_agent.id is not None
 
-            print("\n✓ UserPersonaBridge created for user without agent_id")
-            print("✓ Transaction committed successfully despite hook warning")
-            print(f"✓ User ID: {user_without_agent.id}")
+            logger.info("UserPersonaBridge created for user without agent_id")
+            logger.info("Transaction committed successfully despite hook warning")
+            logger.info("User ID: %s", user_without_agent.id)
 
         except Exception as e:
             pytest.fail(

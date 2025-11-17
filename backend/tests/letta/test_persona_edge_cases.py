@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import pytest
 
@@ -10,6 +11,8 @@ from app.crud.persona import get_user_personas
 from app.crud.user import create_user
 from app.db.session import get_session
 from app.models.persona import Persona
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -67,9 +70,9 @@ async def test_user_with_multiple_personas(letta_client):
 
         assert len(persona_block_labels) == 2
 
-        print(f"\n✓ User associated with {len(persona_handles)} personas")
-        print(f"✓ Persona handles: {persona_handles}")
-        print(f"✓ Agent has {len(persona_block_labels)} persona blocks")
+        logger.info("User associated with %s personas", len(persona_handles))
+        logger.info("Persona handles: %s", persona_handles)
+        logger.info("Agent has %s persona blocks", len(persona_block_labels))
 
         break
 
@@ -96,8 +99,8 @@ async def test_very_long_persona_handles(letta_client):
 
         assert data["success"] is True or "error" in data
 
-        print(f"\n✓ Long handle processed: {long_handle[:50]}...")
-        print(f"✓ Result: {data.get('success', 'error handled')}")
+        logger.info("Long handle processed: %s...", long_handle[:50])
+        logger.info("Result: %s", data.get("success", "error handled"))
 
         break
 
@@ -127,11 +130,13 @@ async def test_persona_handle_with_special_characters(letta_client):
             result = update_user_persona_profile_in_db(user.id, handle, 1.0)
             data = json.loads(result)
 
-            print(
-                f"  Handle '{handle}': {'success' if data.get('success') else 'rejected'}"
+            logger.info(
+                "  Handle '%s': %s",
+                handle,
+                "success" if data.get("success") else "rejected",
             )
 
-        print(f"\n✓ Tested {len(special_handles)} special character handles")
+        logger.info("Tested %s special character handles", len(special_handles))
 
         break
 
@@ -164,8 +169,8 @@ async def test_missing_agent_id_handling(letta_client):
         result = update_user_persona_profile_in_db(user.id, persona.persona_handle, 1.0)
         data = json.loads(result)
 
-        print("\n✓ User without agent_id handled")
-        print(f"✓ Result: {data}")
+        logger.info("User without agent_id handled")
+        logger.info("Result: %s", data)
 
         break
 
@@ -180,7 +185,7 @@ async def test_database_connection_during_tool_execution():
 
     assert "personas" in data or "error" in data
 
-    print(f"\n✓ Tool executed with result keys: {list(data.keys())}")
+    logger.info("Tool executed with result keys: %s", list(data.keys()))
 
 
 @pytest.mark.asyncio
@@ -195,8 +200,8 @@ async def test_nonexistent_user_id(letta_client):
     assert "error" in data
     assert "not found" in data["error"].lower()
 
-    print("\n✓ Nonexistent user handled gracefully")
-    print(f"✓ Error message: {data['error']}")
+    logger.info("Nonexistent user handled gracefully")
+    logger.info("Error message: %s", data["error"])
 
 
 @pytest.mark.asyncio
@@ -220,4 +225,6 @@ async def test_get_or_create_with_invalid_agent_id(letta_client):
                 letta_client, "test_edge_invalid_agent", invalid_id
             )
 
-    print(f"\n✓ All {len(invalid_agent_ids)} invalid agent_id types rejected")
+    logger.info(
+        "All %s invalid agent_id types rejected", len(invalid_agent_ids)
+    )

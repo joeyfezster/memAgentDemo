@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Dict
 
 from letta_client import Letta
@@ -11,6 +12,8 @@ from sqlalchemy.orm import selectinload
 from app.models.user_persona_bridge import UserPersonaBridge
 
 _persona_locks: Dict[str, asyncio.Lock] = {}
+
+logger = logging.getLogger(__name__)
 
 
 async def get_or_create_persona_shared_block(
@@ -40,14 +43,16 @@ async def get_or_create_persona_shared_block(
     Raises:
         ValueError: If agent_id is None, empty, invalid, or agent doesn't exist
     """
-    print(
-        f"=== get_or_create_persona_shared_block called: persona={persona_handle}, agent={agent_id}\n"
+    logger.debug(
+        "=== get_or_create_persona_shared_block called: persona=%s, agent=%s",
+        persona_handle,
+        agent_id,
     )
 
     if not agent_id or not isinstance(agent_id, str) or not agent_id.strip():
         raise ValueError(f"Invalid agent_id: {agent_id}. Must be a non-empty string.")
 
-    print("Validating agent...\n")
+    logger.debug("Validating agent...")
 
     try:
         agents = client.agents.list()
@@ -62,7 +67,7 @@ async def get_or_create_persona_shared_block(
             f"Invalid agent_id: {agent_id}. Unable to verify agent existence: {e}"
         )
 
-    print("Agent validated, acquiring lock...\n")
+    logger.debug("Agent validated, acquiring lock...")
 
     if persona_handle not in _persona_locks:
         _persona_locks[persona_handle] = asyncio.Lock()
@@ -70,8 +75,9 @@ async def get_or_create_persona_shared_block(
     async with _persona_locks[persona_handle]:
         block_label = f"{persona_handle}_service_experience"
 
-        print(
-            f"Lock acquired, searching for existing block with label: {block_label}\n"
+        logger.debug(
+            "Lock acquired, searching for existing block with label: %s",
+            block_label,
         )
 
         existing_block = None
@@ -82,8 +88,10 @@ async def get_or_create_persona_shared_block(
                     agent_blocks = client.agents.blocks.list(agent_id=agent.id)
                     for block in agent_blocks:
                         if block.label == block_label:
-                            print(
-                                f"Found existing block: {block.id} on agent {agent.id}\n"
+                            logger.debug(
+                                "Found existing block: %s on agent %s",
+                                block.id,
+                                agent.id,
                             )
                             existing_block = block
                             break
@@ -92,32 +100,36 @@ async def get_or_create_persona_shared_block(
                 if existing_block:
                     break
         except Exception as e:
-            print(f"Warning: Could not search for existing blocks: {e}")
+            logger.warning("Warning: Could not search for existing blocks: %s", e)
 
         if existing_block:
             # Check if this block is already attached to the target agent
             try:
                 target_agent_blocks = client.agents.blocks.list(agent_id=agent_id)
                 if existing_block.id in [b.id for b in target_agent_blocks]:
-                    print(
-                        f"Block {existing_block.id} already attached to target agent {agent_id}\n"
+                    logger.debug(
+                        "Block %s already attached to target agent %s",
+                        existing_block.id,
+                        agent_id,
                     )
                     return existing_block
                 else:
                     # Attach the existing block to this agent
-                    print(
-                        f"Attaching existing block {existing_block.id} to target agent {agent_id}\n"
+                    logger.debug(
+                        "Attaching existing block %s to target agent %s",
+                        existing_block.id,
+                        agent_id,
                     )
                     client.agents.blocks.attach(
                         agent_id=agent_id, block_id=existing_block.id
                     )
-                    print("Successfully attached existing block to target agent\n")
+                    logger.debug("Successfully attached existing block to target agent")
                     return existing_block
             except Exception as e:
-                print(f"Error attaching existing block to agent: {e}\n")
+                logger.error("Error attaching existing block to agent: %s", e)
                 # If attach fails, continue to create a new block
 
-        print("No existing block found (or failed to attach), creating new one...\n")
+        logger.debug("No existing block found (or failed to attach), creating new one...")
 
         initial_value = f"We have not yet gained any experience commensurate of the specific servicing of queries or analytical flows for {persona_handle} users"
 
@@ -127,29 +139,25 @@ async def get_or_create_persona_shared_block(
             label=block_label, value=initial_value, description=description, limit=8000
         )
 
-        print(f"Created block: {block.id}\n")
+        logger.debug("Created block: %s", block.id)
 
-        import sys
-
-        print(
-            f"DEBUG: Created block {block.id} with label {block_label}",
-            file=sys.stderr,
-            flush=True,
-        )
+        logger.debug("DEBUG: Created block %s with label %s", block.id, block_label)
 
         try:
-            print(f"Attempting to attach block {block.id} to agent {agent_id}...\n")
+            logger.debug("Attempting to attach block %s to agent %s...", block.id, agent_id)
             client.agents.blocks.attach(agent_id=agent_id, block_id=block.id)
-            print(f"Successfully attached block {block.id} to agent {agent_id}\n")
+            logger.debug(
+                "Successfully attached block %s to agent %s", block.id, agent_id
+            )
 
             verify_blocks = client.agents.blocks.list(agent_id=agent_id)
-            print(f"Agent now has {len(verify_blocks)} blocks:\n")
+            logger.debug("Agent now has %s blocks:", len(verify_blocks))
             for vb in verify_blocks:
-                print(f"  - {vb.label} (id: {vb.id})")
+                logger.debug("  - %s (id: %s)", vb.label, vb.id)
         except Exception as e:
-            print(f"ERROR attaching block: {e}\n")
+            logger.error("ERROR attaching block: %s", e)
 
-        print(f"Returning newly created block: {block.id}\n")
+        logger.debug("Returning newly created block: %s", block.id)
 
         return block
 
@@ -179,30 +187,28 @@ async def attach_persona_blocks_to_agents_of_users_with_persona_handle(
         bridge.user for bridge in user_persona_bridges if bridge.user.letta_agent_id
     ]
 
-    import sys
-
-    print(
-        f"DEBUG: Found {len(users_with_agents)} users with agents for persona {persona_handle}",
-        file=sys.stderr,
-        flush=True,
+    logger.debug(
+        "DEBUG: Found %s users with agents for persona %s",
+        len(users_with_agents),
+        persona_handle,
     )
 
     if not users_with_agents:
         return
 
     first_agent_id = users_with_agents[0].letta_agent_id
-    print(
-        f"DEBUG: Getting/creating block for persona {persona_handle} with agent {first_agent_id}",
-        file=sys.stderr,
-        flush=True,
+    logger.debug(
+        "DEBUG: Getting/creating block for persona %s with agent %s",
+        persona_handle,
+        first_agent_id,
     )
     block = await get_or_create_persona_shared_block(
         client, persona_handle, first_agent_id
     )
-    print(
-        f"DEBUG: Got block {block.id} for persona {persona_handle}",
-        file=sys.stderr,
-        flush=True,
+    logger.debug(
+        "DEBUG: Got block %s for persona %s",
+        block.id,
+        persona_handle,
     )
 
     for user in users_with_agents:
@@ -211,26 +217,28 @@ async def attach_persona_blocks_to_agents_of_users_with_persona_handle(
             block_ids = [b.id for b in existing_blocks]
 
             if block.id not in block_ids:
-                print(
-                    f"DEBUG: Attaching block {block.id} to agent {user.letta_agent_id}",
-                    file=sys.stderr,
-                    flush=True,
+                logger.debug(
+                    "DEBUG: Attaching block %s to agent %s",
+                    block.id,
+                    user.letta_agent_id,
                 )
                 client.agents.blocks.attach(
                     agent_id=user.letta_agent_id, block_id=block.id
                 )
-                print(
-                    f"DEBUG: Successfully attached block {block.id} to agent {user.letta_agent_id}",
-                    file=sys.stderr,
-                    flush=True,
+                logger.debug(
+                    "DEBUG: Successfully attached block %s to agent %s",
+                    block.id,
+                    user.letta_agent_id,
                 )
             else:
-                print(
-                    f"DEBUG: Block {block.id} already attached to agent {user.letta_agent_id}",
-                    file=sys.stderr,
-                    flush=True,
+                logger.debug(
+                    "DEBUG: Block %s already attached to agent %s",
+                    block.id,
+                    user.letta_agent_id,
                 )
         except Exception as e:
-            print(
-                f"Warning: Could not attach block to agent {user.letta_agent_id}: {e}"
+            logger.warning(
+                "Warning: Could not attach block to agent %s: %s",
+                user.letta_agent_id,
+                e,
             )

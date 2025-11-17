@@ -1,9 +1,13 @@
+import logging
+
 import pytest
 from app.core.letta_client import (
     create_simple_agent,
     register_mock_tools,
     send_message_to_agent,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def test_letta_server_connection(letta_client):
@@ -65,9 +69,9 @@ def test_mem_block_impacts_agent_behavior(letta_client):
             text=True,
         )
 
-        print("\n=== COMPILED CONTEXT WINDOW ===")
-        print(result.stdout)
-        print("=== END CONTEXT WINDOW ===\n")
+        logger.info("=== COMPILED CONTEXT WINDOW ===")
+        logger.info(result.stdout)
+        logger.info("=== END CONTEXT WINDOW ===")
 
         assert "banana" in response.message_content.lower()
     finally:

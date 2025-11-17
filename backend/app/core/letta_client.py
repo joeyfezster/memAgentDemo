@@ -1,8 +1,11 @@
+import logging
+import os
 from typing import Optional
 
 from letta_client import Letta
 from pydantic import BaseModel
-import os
+
+logger = logging.getLogger(__name__)
 
 
 class LettaConfig(BaseModel):
@@ -122,7 +125,7 @@ def register_mock_tools(client: Letta) -> list[str]:
             created = client.tools.create(source_code=source_code)
             registered.append(created.name)
         except Exception as e:
-            print(f"Failed to register tool {func.__name__}: {e}")
+            logger.warning("Failed to register tool %s: %s", func.__name__, e)
 
     return registered
 

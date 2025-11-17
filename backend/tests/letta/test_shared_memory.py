@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 from httpx import AsyncClient
 
 from app.main import app
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -17,8 +21,8 @@ async def test_shared_memory_blocks_between_agents(letta_client):
         limit=10000,
     )
 
-    print(f"\n✓ Created shared block with ID: {shared_block.id}")
-    print(f"  Initial value: {shared_block.value[:80]}...")
+    logger.info("Created shared block with ID: %s", shared_block.id)
+    logger.info("  Initial value: %s...", shared_block.value[:80])
 
     registration_payload_1 = {
         "email": "shared_agent_user1@example.com",
@@ -54,25 +58,25 @@ async def test_shared_memory_blocks_between_agents(letta_client):
         assert agent_2_id is not None, "Agent 2 must be created"
         assert agent_1_id != agent_2_id, "Agents should have different IDs"
 
-        print("\n✓ Created two agents:")
-        print(f"  Agent 1: {agent_1_id}")
-        print(f"  Agent 2: {agent_2_id}")
+        logger.info("Created two agents:")
+        logger.info("  Agent 1: %s", agent_1_id)
+        logger.info("  Agent 2: %s", agent_2_id)
 
         letta_client.agents.blocks.attach(agent_id=agent_1_id, block_id=shared_block.id)
         letta_client.agents.blocks.attach(agent_id=agent_2_id, block_id=shared_block.id)
 
-        print("\n✓ Attached shared block to both agents")
+        logger.info("Attached shared block to both agents")
 
         agent_1_blocks = letta_client.agents.blocks.list(agent_id=agent_1_id)
         agent_2_blocks = letta_client.agents.blocks.list(agent_id=agent_2_id)
 
-        print("\n✓ Agent 1 blocks:")
+        logger.info("Agent 1 blocks:")
         for block in agent_1_blocks:
-            print(f"  - {block.label} (ID: {block.id})")
+            logger.info("  - %s (ID: %s)", block.label, block.id)
 
-        print("\n✓ Agent 2 blocks:")
+        logger.info("Agent 2 blocks:")
         for block in agent_2_blocks:
-            print(f"  - {block.label} (ID: {block.id})")
+            logger.info("  - %s (ID: %s)", block.label, block.id)
 
         agent_1_shared = next(
             (b for b in agent_1_blocks if b.label == "shared_experience"), None
@@ -93,14 +97,14 @@ async def test_shared_memory_blocks_between_agents(letta_client):
             agent_1_shared.value == agent_2_shared.value
         ), "Both agents should see the same block content"
 
-        print("\n✓ VERIFIED: Both agents share the same block")
-        print(f"  Shared block ID: {agent_1_shared.id}")
-        print(f"  Block content: {agent_1_shared.value[:80]}...")
+        logger.info("VERIFIED: Both agents share the same block")
+        logger.info("  Shared block ID: %s", agent_1_shared.id)
+        logger.info("  Block content: %s...", agent_1_shared.value[:80])
 
         updated_value = "Shared knowledge updated: All agents should learn from real estate analysis patterns."
         letta_client.blocks.modify(block_id=shared_block.id, value=updated_value)
 
-        print("\n✓ Updated shared block content")
+        logger.info("Updated shared block content")
 
         agent_1_updated = letta_client.agents.blocks.retrieve(
             agent_id=agent_1_id, block_label="shared_experience"
@@ -119,8 +123,8 @@ async def test_shared_memory_blocks_between_agents(letta_client):
             agent_1_updated.value == agent_2_updated.value
         ), "Both agents should see same updated value"
 
-        print("\n✓ VERIFIED: Both agents see the updated shared block content")
-        print(f"  Updated content: {agent_1_updated.value[:80]}...")
+        logger.info("VERIFIED: Both agents see the updated shared block content")
+        logger.info("  Updated content: %s...", agent_1_updated.value[:80])
 
         agents_with_block = letta_client.blocks.agents.list(block_id=shared_block.id)
         agent_ids_with_block = {agent.id for agent in agents_with_block}
@@ -132,5 +136,7 @@ async def test_shared_memory_blocks_between_agents(letta_client):
             agent_2_id in agent_ids_with_block
         ), "Agent 2 should be listed as using the block"
 
-        print(f"\n✓ VERIFIED: Block reports {len(agents_with_block)} agents attached")
-        print("\n✓ Test complete - shared memory blocks working correctly")
+        logger.info(
+            "VERIFIED: Block reports %s agents attached", len(agents_with_block)
+        )
+        logger.info("Test complete - shared memory blocks working correctly")
