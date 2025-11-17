@@ -114,6 +114,7 @@ def test_agent_uses_multiple_tools(letta_client):
         letta_client,
         memory_blocks=memory_blocks,
         tools=tool_names,
+        model="openai/o1-mini",
     )
     try:
         prompt = (
