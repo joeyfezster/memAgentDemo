@@ -12,6 +12,7 @@ import {
 import ChatWindow from "./components/ChatWindow";
 import LoginForm from "./components/LoginForm";
 import Sidebar from "./components/Sidebar";
+import AgentExplorer from "./components/AgentExplorer/AgentExplorer";
 
 type AuthState = {
   token: string;
@@ -42,6 +43,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(null);
+  const [activeView, setActiveView] = useState<"chat" | "agents">("chat");
 
   useEffect(() => {
     const restoreUser = async () => {
@@ -117,6 +119,7 @@ function App() {
     setError(null);
     setConversations([]);
     setCurrentConversationId(null);
+    setActiveView("chat");
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -150,20 +153,60 @@ function App() {
   return (
     <div className="app">
       {user ? (
-        <div className="app-container">
-          <Sidebar
-            conversations={conversations}
-            activeConversationId={currentConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewChat={handleNewChat}
-          />
-          <ChatWindow
-            user={user}
-            token={auth!.token}
-            conversationId={currentConversationId}
-            onLogout={handleLogout}
-          />
-        </div>
+        <>
+          <header className="app__nav">
+            <div>
+              <h1>memAgent Demo</h1>
+              <p>Signed in as {user.display_name}</p>
+            </div>
+            <div className="app__nav-tabs">
+              <button
+                type="button"
+                className={`app__nav-button ${
+                  activeView === "chat" ? "is-active" : ""
+                }`}
+                onClick={() => setActiveView("chat")}
+              >
+                Chat workspace
+              </button>
+              <button
+                type="button"
+                className={`app__nav-button ${
+                  activeView === "agents" ? "is-active" : ""
+                }`}
+                onClick={() => setActiveView("agents")}
+              >
+                Agents & memories
+              </button>
+              <button
+                type="button"
+                className="app__nav-logout"
+                onClick={handleLogout}
+              >
+                Log out
+              </button>
+            </div>
+          </header>
+          {activeView === "chat" ? (
+            <div className="app-container">
+              <Sidebar
+                conversations={conversations}
+                activeConversationId={currentConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewChat={handleNewChat}
+              />
+              <ChatWindow
+                user={user}
+                token={auth!.token}
+                conversationId={currentConversationId}
+              />
+            </div>
+          ) : (
+            <main className="agent-explorer-page">
+              <AgentExplorer token={auth!.token} />
+            </main>
+          )}
+        </>
       ) : (
         <>
           <header className="app__header">
