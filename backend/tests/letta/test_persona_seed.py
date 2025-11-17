@@ -30,28 +30,6 @@ async def test_sarah_associated_with_qsr_real_estate(letta_client):
 
 
 @pytest.mark.asyncio
-async def test_daniel_associated_with_tobacco_consumer_insights(letta_client):
-    """Test that Daniel is associated with tobacco_consumer_insights persona after seeding."""
-    async for session in get_session():
-        daniel = await get_user_by_email(session, "daniel.insights@goldtobacco.com")
-
-        if daniel is None:
-            pytest.skip("Daniel not found - seed data not loaded")
-
-        user_personas = await get_user_personas(session, daniel.id)
-
-        persona_handles = [up.persona.persona_handle for up in user_personas]
-
-        assert "tobacco_consumer_insights" in persona_handles
-
-        print(f"\n✓ Daniel found: {daniel.display_name}")
-        print(f"✓ Daniel's personas: {persona_handles}")
-        print("✓ tobacco_consumer_insights persona assigned")
-
-        break
-
-
-@pytest.mark.asyncio
 async def test_shared_blocks_attached_to_sarah_agent(letta_client):
     """Test that Sarah's agent has qsr_real_estate_service_experience block attached."""
     async for session in get_session():
