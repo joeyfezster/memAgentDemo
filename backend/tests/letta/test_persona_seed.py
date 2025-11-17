@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-import os
 import pytest
 
 from app.crud.persona import get_user_personas
 from app.crud.user import get_user_by_email
 from app.db.session import get_session
-
-# Skip all tests in this file if persona seeding is disabled
-pytestmark = pytest.mark.skipif(
-    os.getenv("SKIP_PERSONA_SEED") == "1",
-    reason="Persona seeding disabled (SKIP_PERSONA_SEED=1)",
-)
 
 
 @pytest.mark.asyncio

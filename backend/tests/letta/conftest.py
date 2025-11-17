@@ -3,12 +3,14 @@ import pytest
 from app.core.letta_client import create_letta_client, create_simple_agent
 
 
-@pytest.fixture(scope="module", autouse=True)
-def skip_persona_seed():
-    """Skip persona seeding for Letta integration tests."""
-    os.environ["SKIP_PERSONA_SEED"] = "1"
+@pytest.fixture(scope="session", autouse=True)
+def enable_letta_for_integration_tests():
+    """Enable Letta integration for letta test suite (override root conftest)."""
+    # Remove SKIP_LETTA_USE set by root conftest so seed_personas creates agents
+    os.environ.pop("SKIP_LETTA_USE", None)
     yield
-    os.environ.pop("SKIP_PERSONA_SEED", None)
+    # Restore it after tests
+    os.environ["SKIP_LETTA_USE"] = "1"
 
 
 @pytest.fixture
