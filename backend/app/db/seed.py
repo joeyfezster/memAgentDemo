@@ -75,6 +75,39 @@ def load_user_records() -> list[UserRecord]:
 
 
 async def seed_personas(session: AsyncSession) -> None:
+    from app.models.persona import Persona
+    from app.crud.persona import get_persona_by_handle
+
+    qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
+    if not qsr_persona:
+        qsr_persona = Persona(
+            persona_handle="qsr_real_estate",
+            industry="QSR",
+            professional_role="Real Estate",
+            description="Quick Service Restaurant professionals focused on site selection and real estate strategy",
+            typical_kpis="Traffic patterns, demographic alignment, competitive density, sales projections per location",
+            typical_motivations="Maximize ROI on new locations, minimize cannibalization, optimize market coverage",
+            quintessential_queries="Best locations for new stores, trade area analysis, competitor proximity analysis",
+        )
+        session.add(qsr_persona)
+
+    tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
+    if not tobacco_persona:
+        tobacco_persona = Persona(
+            persona_handle="tobacco_consumer_insights",
+            industry="Tobacco",
+            professional_role="Consumer Insights",
+            description="Consumer insights professionals in tobacco industry focusing on market analysis and consumer behavior",
+            typical_kpis="Market share by region, consumer demographics, purchase patterns, brand penetration",
+            typical_motivations="Understand consumer behavior, optimize marketing spend, identify growth opportunities",
+            quintessential_queries="Consumer demographic analysis, competitive market analysis, retail distribution patterns",
+        )
+        session.add(tobacco_persona)
+
+    await session.commit()
+    await session.refresh(qsr_persona)
+    await session.refresh(tobacco_persona)
+
     user_records = load_user_records()
     if not user_records:
         return
@@ -140,11 +173,33 @@ async def seed_personas(session: AsyncSession) -> None:
 
     if letta_client and "sarah" in created_users and "daniel" in created_users:
         try:
+            from app.crud.persona import get_persona_by_handle, assign_persona_to_user
+            from app.services.persona_service import (
+                attach_persona_blocks_to_agents_of_users_with_persona_handle,
+            )
+
             sarah = created_users["sarah"]
             daniel = created_users["daniel"]
 
             await session.refresh(sarah)
             await session.refresh(daniel)
+
+            qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
+            tobacco_persona = await get_persona_by_handle(
+                session, "tobacco_consumer_insights"
+            )
+
+            if qsr_persona and sarah.letta_agent_id:
+                await assign_persona_to_user(session, sarah.id, qsr_persona.id)
+                await attach_persona_blocks_to_agents_of_users_with_persona_handle(
+                    session, letta_client, "qsr_real_estate"
+                )
+
+            if tobacco_persona and daniel.letta_agent_id:
+                await assign_persona_to_user(session, daniel.id, tobacco_persona.id)
+                await attach_persona_blocks_to_agents_of_users_with_persona_handle(
+                    session, letta_client, "tobacco_consumer_insights"
+                )
 
             if sarah.letta_agent_id and daniel.letta_agent_id:
                 sarah_conv = await create_conversation(session, user_id=sarah.id)
