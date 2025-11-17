@@ -90,6 +90,7 @@ def test_agent_conversation_continuity(letta_client, letta_agent_id):
     assert "alice" in second_response.message_content.lower()
 
 
+@pytest.mark.timeout(180)  # 3 minutes for LLM tool calls
 def test_agent_uses_multiple_tools(letta_client):
     """Test that agent can successfully use at least 2 different registered tools."""
     tool_names = register_mock_tools(letta_client)

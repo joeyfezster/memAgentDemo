@@ -77,15 +77,7 @@ def load_user_records() -> list[UserRecord]:
 async def seed_personas(session: AsyncSession) -> None:
     from app.crud.persona import get_persona_by_handle
 
-    if os.getenv("SKIP_PERSONA_SEED") == "1":
-        return
-
-    qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
-    tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
-
-    if not qsr_persona or not tobacco_persona:
-        print("Warning: Personas not found. Run migrations to seed personas.")
-        return
+    skip_persona_seed = os.getenv("SKIP_PERSONA_SEED") == "1"
 
     user_records = load_user_records()
     if not user_records:
@@ -178,6 +170,19 @@ async def seed_personas(session: AsyncSession) -> None:
         created_users[persona.display_name.lower()] = user
 
     await session.commit()
+
+    # Skip persona assignment if SKIP_PERSONA_SEED is set
+    # (users are still created for authentication tests)
+    if skip_persona_seed:
+        print("Skipping persona assignment (SKIP_PERSONA_SEED=1)")
+        return
+
+    qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
+    tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
+
+    if not qsr_persona or not tobacco_persona:
+        print("Warning: Personas not found. Run migrations to seed personas.")
+        return
 
     if letta_client and "sarah" in created_users and "daniel" in created_users:
         try:
