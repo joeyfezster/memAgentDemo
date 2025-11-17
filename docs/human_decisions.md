@@ -42,14 +42,16 @@
 
 ## Additional Recommended Improvements
 
+### Cost Model
+
+1. Implement a cost tracking system to monitor per-query token usage, embedding costs, and overall expenses related to memory operations.
+1. Create a credit system for effective pricing per consumption of data + analytics (tokens).
+
 ### Agent Model
 
 1. This solution uses a single agent per user model. While this simplifies implementation and context continuity, it makes task-specialization more difficult. 'learned expertise' gets cluttered as the single agent has to retain the expertise across multiple tasks across multiple users. Task-specialized agents remove one complexity axis (task type).
-1. the letta agent model is flexible enough
-
-```mermaid
-
-```
+1. In addition, task-specialized agents can have more focused toolsets, and prompt engineering, leading to better performance per task and reduced latency.
+1. The current implementation of the shared 'persona_service_experience' memory blocks has a race condition. If two users of the same persona type use the agent simultaneously, they may overwrite each other's shared memory. A more robust implementation would use a versioned or append-only log structure for shared memories.
 
 ### Governance
 
@@ -69,3 +71,4 @@
 
 1. Security posture
 1. UI/UX design
+1. Observability (logging, monitoring, alerting)
