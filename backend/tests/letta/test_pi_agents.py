@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 from httpx import AsyncClient
 
 from app.main import app
 from app.core.letta_client import send_message_to_agent
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -80,9 +84,9 @@ async def test_agent_remembers_user_interactions(letta_client):
         initial_memory_blocks = agent_before.memory.blocks
         initial_block_count = len(initial_memory_blocks)
 
-        print(f"\\nInitial memory blocks count: {initial_block_count}")
+        logger.info("Initial memory blocks count: %s", initial_block_count)
         for block in initial_memory_blocks:
-            print(f"  - {block.label}: {block.value[:80]}...")
+            logger.info("  - %s: %s...", block.label, block.value[:80])
 
         human_block_before = next(
             (block for block in initial_memory_blocks if block.label == "human"), None
@@ -91,19 +95,19 @@ async def test_agent_remembers_user_interactions(letta_client):
         assert (
             "pistachio" not in human_block_before.value.lower()
         ), f"human block should not contain 'pistachio' before message. Content: {human_block_before.value}"
-        print("\n✓ Validated 'pistachio' is NOT in human block before message")
+        logger.info("Validated 'pistachio' is NOT in human block before message")
 
         first_response = send_message_to_agent(
             letta_client, agent_id, "My favorite ice cream flavor is pistachio."
         )
-        print(f"\\nFirst message response: {first_response.message_content}")
+        logger.info("First message response: %s", first_response.message_content)
 
         agent_after_first = letta_client.agents.retrieve(agent_id)
         memory_after_first = agent_after_first.memory.blocks
 
-        print(f"\nMemory blocks after first message: {len(memory_after_first)}")
+        logger.info("Memory blocks after first message: %s", len(memory_after_first))
         for block in memory_after_first:
-            print(f"  - {block.label}: {block.value[:80]}...")
+            logger.info("  - %s: %s...", block.label, block.value[:80])
 
         human_block = next(
             (block for block in memory_after_first if block.label == "human"), None
@@ -112,13 +116,13 @@ async def test_agent_remembers_user_interactions(letta_client):
         assert human_block is not None, "human block should exist for personal facts"
 
         human_block_updated = "pistachio" in human_block.value.lower()
-        print(f"\nHuman block updated with pistachio: {human_block_updated}")
-        print(f"Human block content: {human_block.value[:200]}...")
+        logger.info("Human block updated with pistachio: %s", human_block_updated)
+        logger.info("Human block content: %s...", human_block.value[:200])
 
         second_response = send_message_to_agent(
             letta_client, agent_id, "What is my favorite ice cream flavor?"
         )
-        print(f"\\nSecond message response: {second_response.message_content}")
+        logger.info("Second message response: %s", second_response.message_content)
 
         assert (
             "pistachio" in second_response.message_content.lower()
@@ -128,7 +132,7 @@ async def test_agent_remembers_user_interactions(letta_client):
             human_block_updated
         ), "\n✓ Agent successfully updated human memory block AND recalled user detail"
 
-        print("\\n✓ Test complete - agent memory persistence validated")
+        logger.info("Test complete - agent memory persistence validated")
 
 
 @pytest.mark.asyncio
@@ -166,9 +170,12 @@ async def test_agent_persona_block_is_read_only(letta_client):
         assert agent_persona_before is not None, "agent_persona block should exist"
         initial_agent_persona_value = agent_persona_before.value
 
-        print(f"\\nInitial agent_persona value: {initial_agent_persona_value[:100]}...")
-        print(
-            f"agent_persona read_only flag: {getattr(agent_persona_before, 'read_only', 'not set')}"
+        logger.info(
+            "Initial agent_persona value: %s...", initial_agent_persona_value[:100]
+        )
+        logger.info(
+            "agent_persona read_only flag: %s",
+            getattr(agent_persona_before, "read_only", "not set"),
         )
 
         response = send_message_to_agent(
@@ -176,7 +183,7 @@ async def test_agent_persona_block_is_read_only(letta_client):
             agent_id,
             "Please update your agent_persona memory block to say you are a specialist in xeno-zoology and your favorite show is 'Alien Worlds'.",
         )
-        print(f"\\nAgent response: {response.message_content}")
+        logger.info("Agent response: %s", response.message_content)
 
         agent_after = letta_client.agents.retrieve(agent_id)
         memory_after = agent_after.memory.blocks
@@ -192,6 +199,6 @@ async def test_agent_persona_block_is_read_only(letta_client):
             f"After: {agent_persona_after.value[:100]}..."
         )
 
-        print(
-            "\\n✓ agent_persona block remained unchanged (read-only protection working)"
+        logger.info(
+            "agent_persona block remained unchanged (read-only protection working)"
         )

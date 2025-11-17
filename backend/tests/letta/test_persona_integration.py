@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import pytest
 
@@ -11,6 +12,8 @@ from app.crud.user import create_user
 from app.db.session import get_session
 from app.models.persona import Persona
 from app.services.persona_service import get_or_create_persona_shared_block
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -87,11 +90,12 @@ async def test_two_users_with_same_persona_share_same_block_id(letta_client):
         assert agent2_persona_block is not None
         assert agent1_persona_block.id == agent2_persona_block.id
 
-        print(f"\n✓ Both users associated with persona: {persona.persona_handle}")
-        print(f"✓ Agent 1 block ID: {agent1_persona_block.id}")
-        print(f"✓ Agent 2 block ID: {agent2_persona_block.id}")
-        print(
-            f"✓ Block IDs match: {agent1_persona_block.id == agent2_persona_block.id}"
+        logger.info("Both users associated with persona: %s", persona.persona_handle)
+        logger.info("Agent 1 block ID: %s", agent1_persona_block.id)
+        logger.info("Agent 2 block ID: %s", agent2_persona_block.id)
+        logger.info(
+            "Block IDs match: %s",
+            agent1_persona_block.id == agent2_persona_block.id,
         )
 
         break
@@ -138,10 +142,12 @@ async def test_agent_creates_new_persona_dynamically(letta_client):
         assert persona_block is not None
         assert new_handle in persona_block.value
 
-        print(f"\n✓ New persona created dynamically: {new_handle}")
-        print(f"✓ Persona record in database: {created_persona.persona_handle}")
-        print(f"✓ Shared block created: {persona_block.label}")
-        print(f"✓ Block attached to agent: {agent_id}")
+        logger.info("New persona created dynamically: %s", new_handle)
+        logger.info(
+            "Persona record in database: %s", created_persona.persona_handle
+        )
+        logger.info("Shared block created: %s", persona_block.label)
+        logger.info("Block attached to agent: %s", agent_id)
 
         break
 
@@ -219,10 +225,12 @@ async def test_three_users_same_persona_all_see_shared_updates(letta_client):
             )
             assert updated_block.value == updated_value
 
-        print(f"\n✓ All 3 users associated with persona: {persona.persona_handle}")
-        print(f"✓ All agents share same block ID: {initial_block_ids[0]}")
-        print("✓ Block updated with new value")
-        print(f"✓ All 3 agents see updated value: {updated_value[:50]}...")
+        logger.info(
+            "All 3 users associated with persona: %s", persona.persona_handle
+        )
+        logger.info("All agents share same block ID: %s", initial_block_ids[0])
+        logger.info("Block updated with new value")
+        logger.info("All 3 agents see updated value: %s...", updated_value[:50])
 
         break
 
@@ -302,10 +310,13 @@ async def test_update_propagation_across_all_agents(letta_client):
         assert agent2_block_after.value == new_value
         assert agent1_block_after.value == agent2_block_after.value
 
-        print(f"\n✓ Original value: {original_value[:50]}...")
-        print(f"✓ Updated value: {new_value}")
-        print(f"✓ Agent 1 sees update: {agent1_block_after.value == new_value}")
-        print(f"✓ Agent 2 sees update: {agent2_block_after.value == new_value}")
-        print(f"✓ Values match: {agent1_block_after.value == agent2_block_after.value}")
+        logger.info("Original value: %s...", original_value[:50])
+        logger.info("Updated value: %s", new_value)
+        logger.info("Agent 1 sees update: %s", agent1_block_after.value == new_value)
+        logger.info("Agent 2 sees update: %s", agent2_block_after.value == new_value)
+        logger.info(
+            "Values match: %s",
+            agent1_block_after.value == agent2_block_after.value,
+        )
 
         break

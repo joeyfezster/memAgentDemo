@@ -1,5 +1,7 @@
 """Minimal test to debug block attachment."""
 
+import logging
+
 import pytest
 from app.core.letta_client import create_pi_agent
 from app.crud.persona import assign_persona_to_user
@@ -9,6 +11,8 @@ from app.models.persona import Persona
 from app.services.persona_service import (
     attach_persona_blocks_to_agents_of_users_with_persona_handle,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -49,9 +53,9 @@ async def test_minimal_block_attach(letta_client):
             (b for b in blocks if "minimal_test_persona" in b.label), None
         )
 
-        print(f"\nAgent ID: {agent_id}")
-        print(f"All blocks on agent: {[b.label for b in blocks]}")
-        print(f"Persona block: {persona_block}")
+        logger.info("Agent ID: %s", agent_id)
+        logger.info("All blocks on agent: %s", [b.label for b in blocks])
+        logger.info("Persona block: %s", persona_block)
 
         assert (
             persona_block is not None

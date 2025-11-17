@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,6 +16,8 @@ from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.user import UserPublic
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -58,7 +61,7 @@ async def register(
             initial_user_persona_info="",
         )
     except Exception as e:
-        print(f"Warning: Could not create Letta agent during registration: {e}")
+        logger.warning("Warning: Could not create Letta agent during registration: %s", e)
 
     user = await create_user(
         session,

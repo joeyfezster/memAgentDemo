@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from app.crud.persona import get_user_personas
 from app.crud.user import get_user_by_email
 from app.db.session import get_session
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -22,9 +26,9 @@ async def test_sarah_associated_with_qsr_real_estate(letta_client):
 
         assert "qsr_real_estate" in persona_handles
 
-        print(f"\n✓ Sarah found: {sarah.display_name}")
-        print(f"✓ Sarah's personas: {persona_handles}")
-        print("✓ qsr_real_estate persona assigned")
+        logger.info("Sarah found: %s", sarah.display_name)
+        logger.info("Sarah's personas: %s", persona_handles)
+        logger.info("qsr_real_estate persona assigned")
 
         break
 
@@ -52,9 +56,9 @@ async def test_shared_blocks_attached_to_sarah_agent(letta_client):
         assert qsr_block is not None
         assert "qsr_real_estate" in qsr_block.value
 
-        print(f"\n✓ Sarah's agent ID: {sarah.letta_agent_id}")
-        print(f"✓ Persona block found: {qsr_block.label}")
-        print(f"✓ Block value: {qsr_block.value[:80]}...")
+        logger.info("Sarah's agent ID: %s", sarah.letta_agent_id)
+        logger.info("Persona block found: %s", qsr_block.label)
+        logger.info("Block value: %s...", qsr_block.value[:80])
 
         break
 
@@ -82,9 +86,9 @@ async def test_shared_blocks_attached_to_daniel_agent(letta_client):
         assert tobacco_block is not None
         assert "tobacco_consumer_insights" in tobacco_block.value
 
-        print(f"\n✓ Daniel's agent ID: {daniel.letta_agent_id}")
-        print(f"✓ Persona block found: {tobacco_block.label}")
-        print(f"✓ Block value: {tobacco_block.value[:80]}...")
+        logger.info("Daniel's agent ID: %s", daniel.letta_agent_id)
+        logger.info("Persona block found: %s", tobacco_block.label)
+        logger.info("Block value: %s...", tobacco_block.value[:80])
 
         break
 
@@ -117,8 +121,12 @@ async def test_sarah_and_daniel_have_different_persona_blocks(letta_client):
 
         assert len(sarah_block_ids & daniel_block_ids) == 0
 
-        print(f"\n✓ Sarah's persona blocks: {[b.label for b in sarah_persona_blocks]}")
-        print(f"✓ Daniel's persona blocks: {[b.label for b in daniel_persona_blocks]}")
-        print("✓ No shared persona blocks between different personas")
+        logger.info(
+            "Sarah's persona blocks: %s", [b.label for b in sarah_persona_blocks]
+        )
+        logger.info(
+            "Daniel's persona blocks: %s", [b.label for b in daniel_persona_blocks]
+        )
+        logger.info("No shared persona blocks between different personas")
 
         break

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +20,8 @@ from app.crud.message import create_message
 from app.crud.user import get_user_by_email
 from app.models.message import MessageRole
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -87,7 +91,7 @@ async def seed_personas(session: AsyncSession) -> None:
 
     skip_letta = os.getenv("SKIP_LETTA_USE") == "1"
     if skip_letta:
-        print("Skipping Letta integration (SKIP_LETTA_USE=1)")
+        logger.info("Skipping Letta integration (SKIP_LETTA_USE=1)")
 
     settings = get_settings()
     letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
@@ -111,16 +115,19 @@ async def seed_personas(session: AsyncSession) -> None:
                                 letta_client.delete_agent(agent.id)
                                 orphaned_count += 1
                             except Exception as e:
-                                print(
-                                    f"Warning: Could not delete orphaned agent {agent.id}: {e}"
+                                logger.warning(
+                                    "Warning: Could not delete orphaned agent %s: %s",
+                                    agent.id,
+                                    e,
                                 )
 
                     if orphaned_count > 0:
-                        print(
-                            f"Cleaned up {orphaned_count} orphaned Letta agents during seed"
+                        logger.info(
+                            "Cleaned up %s orphaned Letta agents during seed",
+                            orphaned_count,
                         )
         except Exception as e:
-            print(f"Warning: Could not create Letta client: {e}")
+            logger.warning("Warning: Could not create Letta client: %s", e)
 
     created_users = {}
 
@@ -141,8 +148,10 @@ async def seed_personas(session: AsyncSession) -> None:
                     )
                     user.letta_agent_id = agent_id
                 except Exception as e:
-                    print(
-                        f"Warning: Could not create Letta agent for {user.email}: {e}"
+                    logger.warning(
+                        "Warning: Could not create Letta agent for %s: %s",
+                        user.email,
+                        e,
                     )
         else:
             new_user = User(
@@ -160,8 +169,10 @@ async def seed_personas(session: AsyncSession) -> None:
                     )
                     new_user.letta_agent_id = agent_id
                 except Exception as e:
-                    print(
-                        f"Warning: Could not create Letta agent for {new_user.email}: {e}"
+                    logger.warning(
+                        "Warning: Could not create Letta agent for %s: %s",
+                        new_user.email,
+                        e,
                     )
 
             session.add(new_user)
@@ -174,14 +185,14 @@ async def seed_personas(session: AsyncSession) -> None:
     # Skip persona assignment if SKIP_PERSONA_SEED is set
     # (users are still created for authentication tests)
     if skip_persona_seed:
-        print("Skipping persona assignment (SKIP_PERSONA_SEED=1)")
+        logger.info("Skipping persona assignment (SKIP_PERSONA_SEED=1)")
         return
 
     qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
     tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
 
     if not qsr_persona or not tobacco_persona:
-        print("Warning: Personas not found. Run migrations to seed personas.")
+        logger.warning("Warning: Personas not found. Run migrations to seed personas.")
         return
 
     if letta_client and "sarah" in created_users and "daniel" in created_users:
@@ -260,9 +271,9 @@ async def seed_personas(session: AsyncSession) -> None:
                         content=sarah_response.message_content,
                     )
                     await session.commit()
-                    print("Created initial conversation for Sarah")
+                    logger.info("Created initial conversation for Sarah")
                 else:
-                    print("Sarah already has messages, skipping")
+                    logger.info("Sarah already has messages, skipping")
 
                 if not daniel_has_messages:
                     daniel_conv = await create_conversation(session, user_id=daniel.id)
@@ -287,11 +298,12 @@ async def seed_personas(session: AsyncSession) -> None:
                     )
 
                     await session.commit()
-                    print("Created initial conversation for Daniel")
+                    logger.info("Created initial conversation for Daniel")
                 else:
-                    print("Daniel already has messages, skipping")
-                print("Created initial conversation between Sarah and Daniel")
+                    logger.info("Daniel already has messages, skipping")
+                logger.info("Created initial conversation between Sarah and Daniel")
         except Exception as e:
-            print(
-                f"Warning: Could not create initial conversation between personas: {e}"
+            logger.warning(
+                "Warning: Could not create initial conversation between personas: %s",
+                e,
             )

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 
 from letta_client import Letta
+
+logger = logging.getLogger(__name__)
 
 
 def _run_async(coro):
@@ -138,8 +141,10 @@ def update_user_persona_profile_in_db(
     )
 
     async def _update():
-        print(
-            f"DEBUG TOOL: Starting update for user_id={user_id}, persona_handle={persona_handle}"
+        logger.debug(
+            "DEBUG TOOL: Starting update for user_id=%s, persona_handle=%s",
+            user_id,
+            persona_handle,
         )
         session = _get_db_session()
         letta_client = _get_letta_client()
@@ -147,10 +152,14 @@ def update_user_persona_profile_in_db(
         try:
             user = await get_user_by_id(session, user_id)
             if not user:
-                print(f"DEBUG TOOL: User not found: {user_id}")
+                logger.debug("DEBUG TOOL: User not found: %s", user_id)
                 return json.dumps({"success": False, "error": "User not found"})
 
-            print(f"DEBUG TOOL: Found user {user.id}, agent_id={user.letta_agent_id}")
+            logger.debug(
+                "DEBUG TOOL: Found user %s, agent_id=%s",
+                user.id,
+                user.letta_agent_id,
+            )
 
             persona = await get_persona_by_handle(session, persona_handle)
 
@@ -195,11 +204,11 @@ def update_user_persona_profile_in_db(
                 confidence_score=confidence_score,
             )
 
-            print("DEBUG TOOL: Assigned persona to user, now attaching blocks")
+            logger.debug("DEBUG TOOL: Assigned persona to user, now attaching blocks")
             await attach_persona_blocks_to_agents_of_users_with_persona_handle(
                 session, letta_client, persona_handle
             )
-            print("DEBUG TOOL: Finished attaching blocks")
+            logger.debug("DEBUG TOOL: Finished attaching blocks")
 
             return json.dumps(
                 {
