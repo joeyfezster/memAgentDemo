@@ -17,14 +17,12 @@ type ChatWindowProps = {
   user: User;
   token: string;
   conversationId: string | null;
-  onLogout: () => void;
 };
 
 export default function ChatWindow({
   user,
   token,
   conversationId,
-  onLogout,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -139,9 +137,6 @@ export default function ChatWindow({
               Persona handle: {user.persona_handle}
             </p>
           </div>
-          <button className="chat__logout" type="button" onClick={onLogout}>
-            Log out
-          </button>
         </header>
         <div className="chat__messages">
           <p className="chat__empty">
@@ -161,9 +156,6 @@ export default function ChatWindow({
             Persona handle: {user.persona_handle}
           </p>
         </div>
-        <button className="chat__logout" type="button" onClick={onLogout}>
-          Log out
-        </button>
       </header>
 
       <div className="chat__messages" aria-live="polite">

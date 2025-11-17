@@ -1,54 +1,9 @@
-import os
 import pytest
 from app.core.letta_client import (
-    create_letta_client,
     create_simple_agent,
     register_mock_tools,
     send_message_to_agent,
 )
-
-
-pytestmark = pytest.mark.usefixtures("skip_persona_seed")
-
-
-@pytest.fixture(scope="module", autouse=True)
-def skip_persona_seed():
-    os.environ["SKIP_PERSONA_SEED"] = "1"
-    yield
-    os.environ.pop("SKIP_PERSONA_SEED", None)
-
-
-@pytest.fixture
-def letta_client():
-    """Ensure Letta server is available for tests."""
-    base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
-    token = os.getenv("LETTA_SERVER_PASSWORD")
-
-    if not base_url or not token:
-        pytest.fail(
-            "Letta server must be configured. Set LETTA_BASE_URL and LETTA_SERVER_PASSWORD environment variables."
-        )
-
-    client = create_letta_client(base_url, token)
-
-    try:
-        client.agents.list()
-    except Exception as e:
-        pytest.fail(
-            f"Letta server not accessible at {base_url}. Ensure docker-compose services are running. Error: {e}"
-        )
-
-    return client
-
-
-@pytest.fixture
-def letta_agent_id(letta_client):
-    agent_id = create_simple_agent(letta_client)
-    yield agent_id
-    try:
-        letta_client.agents.delete(agent_id)
-    except Exception:
-        pass
 
 
 def test_letta_server_connection(letta_client):

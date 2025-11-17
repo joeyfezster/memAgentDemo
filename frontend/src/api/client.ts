@@ -65,6 +65,56 @@ export type SendMessageResponse = {
   assistant_message: Message;
 };
 
+export type AssignedUser = {
+  id: string;
+  email: string;
+  display_name: string;
+};
+
+export type MemoryBlock = {
+  id: string;
+  label: string | null;
+  description: string | null;
+  value: string | null;
+  limit: number | null;
+  read_only: boolean | null;
+  block_type: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type AgentOverview = {
+  id: string;
+  name: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  user: AssignedUser | null;
+  memory_blocks: MemoryBlock[];
+  metadata: Record<string, unknown>;
+};
+
+export type AgentsOverviewResponse = {
+  agents: AgentOverview[];
+  agent_count: number;
+  block_count: number;
+  generated_at: string;
+};
+
+export type ArchivalEntry = {
+  id: string;
+  content: string;
+  tags: string[];
+  created_at: string | null;
+  updated_at: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type AgentArchivalResponse = {
+  agent_id: string;
+  entries: ArchivalEntry[];
+  requested_limit: number;
+  returned_count: number;
+};
+
 export async function login(
   email: string,
   password: string,
@@ -194,4 +244,47 @@ export async function sendMessageToConversation(
   }
 
   return response.json() as Promise<SendMessageResponse>;
+}
+
+export async function getAgentsOverview(
+  token: string,
+): Promise<AgentsOverviewResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/letta/agents/overview`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to load agents");
+  }
+
+  return response.json() as Promise<AgentsOverviewResponse>;
+}
+
+export async function getAgentArchival(
+  token: string,
+  agentId: string,
+  limit = 7,
+): Promise<AgentArchivalResponse> {
+  const url = new URL(
+    `${getApiBaseUrl()}/letta/agents/${agentId}/archival`,
+  );
+  if (limit) {
+    url.searchParams.set("limit", String(limit));
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to load archival entries");
+  }
+
+  return response.json() as Promise<AgentArchivalResponse>;
 }
