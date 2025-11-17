@@ -6,11 +6,57 @@
   color: #f8fafc;
 }
 
+.app__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  gap: 1.5rem;
+}
+
+.app__nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.app__nav-button {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: transparent;
+  color: #f8fafc;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.app__nav-button.is-active {
+  background: linear-gradient(90deg, #22d3ee, #818cf8);
+  color: #0f172a;
+  border-color: transparent;
+}
+
+.app__nav-logout {
+  border: 1px solid #38bdf8;
+  background: transparent;
+  color: #e0f2fe;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
 .app-container {
   display: flex;
   flex: 1;
-  height: 100vh;
+  height: calc(100vh - 120px);
   overflow: hidden;
+}
+
+.agent-explorer-page {
+  flex: 1;
+  height: calc(100vh - 120px);
+  padding: 0 2rem 2rem;
 }
 
 .app__header {
@@ -112,15 +158,6 @@
 .chat__subtitle {
   margin: 0.25rem 0 0;
   color: #94a3b8;
-}
-
-.chat__logout {
-  border: 1px solid #38bdf8;
-  background: transparent;
-  color: #e0f2fe;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  cursor: pointer;
 }
 
 .chat__messages {

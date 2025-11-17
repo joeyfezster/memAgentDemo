@@ -112,15 +112,44 @@ async def seed_personas(session: AsyncSession) -> None:
     if not user_records:
         return
 
+    from sqlalchemy import select
+
+    skip_letta = os.getenv("SKIP_LETTA_USE") == "1"
+    if skip_letta:
+        print("Skipping Letta integration (SKIP_LETTA_USE=1)")
+
     settings = get_settings()
     letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
     letta_token = os.getenv("LETTA_SERVER_PASSWORD")
 
     letta_client = None
-    try:
-        letta_client = create_letta_client(letta_base_url, letta_token)
-    except Exception as e:
-        print(f"Warning: Could not create Letta client: {e}")
+    if not skip_letta:
+        try:
+            letta_client = create_letta_client(letta_base_url, letta_token)
+
+            if letta_client:
+                result = await session.execute(select(User.letta_agent_id))
+                user_agent_ids = {row[0] for row in result if row[0]}
+
+                if user_agent_ids:
+                    all_agents = letta_client.list_agents()
+                    orphaned_count = 0
+                    for agent in all_agents:
+                        if agent.id not in user_agent_ids:
+                            try:
+                                letta_client.delete_agent(agent.id)
+                                orphaned_count += 1
+                            except Exception as e:
+                                print(
+                                    f"Warning: Could not delete orphaned agent {agent.id}: {e}"
+                                )
+
+                    if orphaned_count > 0:
+                        print(
+                            f"Cleaned up {orphaned_count} orphaned Letta agents during seed"
+                        )
+        except Exception as e:
+            print(f"Warning: Could not create Letta client: {e}")
 
     created_users = {}
 
@@ -202,46 +231,81 @@ async def seed_personas(session: AsyncSession) -> None:
                 )
 
             if sarah.letta_agent_id and daniel.letta_agent_id:
-                sarah_conv = await create_conversation(session, user_id=sarah.id)
-                daniel_conv = await create_conversation(session, user_id=daniel.id)
+                from app.crud.conversation import get_user_conversations
+                from app.crud.message import get_conversation_messages
 
-                sarah_intro = "Hi! I'm Sarah, Director of Real Estate for a fast-casual chain. I'm exploring how location analytics can help with site selection."
-                daniel_intro = "Hey I'm Daniel, a director of consumer insights and activation at a tobacco company. I'm interested in how location data can enhance our marketing strategies."
+                sarah_convs = await get_user_conversations(session, sarah.id)
+                daniel_convs = await get_user_conversations(session, daniel.id)
 
-                sarah_response = send_message_to_agent(
-                    letta_client, sarah.letta_agent_id, daniel_intro
-                )
-                daniel_response = send_message_to_agent(
-                    letta_client, daniel.letta_agent_id, sarah_intro
-                )
+                sarah_has_messages = False
+                daniel_has_messages = False
 
-                await create_message(
-                    session,
-                    conversation_id=sarah_conv.id,
-                    role=MessageRole.USER,
-                    content=daniel_intro,
-                )
-                await create_message(
-                    session,
-                    conversation_id=sarah_conv.id,
-                    role=MessageRole.AGENT,
-                    content=sarah_response.message_content,
-                )
+                if sarah_convs:
+                    for conv in sarah_convs:
+                        messages = await get_conversation_messages(session, conv.id)
+                        if messages:
+                            sarah_has_messages = True
+                            break
 
-                await create_message(
-                    session,
-                    conversation_id=daniel_conv.id,
-                    role=MessageRole.USER,
-                    content=sarah_intro,
-                )
-                await create_message(
-                    session,
-                    conversation_id=daniel_conv.id,
-                    role=MessageRole.AGENT,
-                    content=daniel_response.message_content,
-                )
+                if daniel_convs:
+                    for conv in daniel_convs:
+                        messages = await get_conversation_messages(session, conv.id)
+                        if messages:
+                            daniel_has_messages = True
+                            break
 
-                await session.commit()
+                if not sarah_has_messages:
+                    sarah_conv = await create_conversation(session, user_id=sarah.id)
+
+                    sarah_intro = "Hi! I'm Sarah, Director of Real Estate for a fast-casual chain. I'm exploring how location analytics can help with site selection."
+
+                    sarah_response = send_message_to_agent(
+                        letta_client, sarah.letta_agent_id, sarah_intro
+                    )
+
+                    await create_message(
+                        session,
+                        conversation_id=sarah_conv.id,
+                        role=MessageRole.USER,
+                        content=sarah_intro,
+                    )
+                    await create_message(
+                        session,
+                        conversation_id=sarah_conv.id,
+                        role=MessageRole.AGENT,
+                        content=sarah_response.message_content,
+                    )
+                    await session.commit()
+                    print("Created initial conversation for Sarah")
+                else:
+                    print("Sarah already has messages, skipping")
+
+                if not daniel_has_messages:
+                    daniel_conv = await create_conversation(session, user_id=daniel.id)
+
+                    daniel_intro = "Hey I'm Daniel, a director of consumer insights and activation at a tobacco company. I'm interested in how location data can enhance our marketing strategies."
+
+                    daniel_response = send_message_to_agent(
+                        letta_client, daniel.letta_agent_id, daniel_intro
+                    )
+
+                    await create_message(
+                        session,
+                        conversation_id=daniel_conv.id,
+                        role=MessageRole.USER,
+                        content=daniel_intro,
+                    )
+                    await create_message(
+                        session,
+                        conversation_id=daniel_conv.id,
+                        role=MessageRole.AGENT,
+                        content=daniel_response.message_content,
+                    )
+
+                    await session.commit()
+                    print("Created initial conversation for Daniel")
+                else:
+                    print("Daniel already has messages, skipping")
                 print("Created initial conversation between Sarah and Daniel")
         except Exception as e:
             print(
