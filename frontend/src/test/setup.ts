@@ -112,6 +112,7 @@ beforeAll(async () => {
       DATABASE_URL: `sqlite+aiosqlite:///${databasePath}`,
       JWT_SECRET_KEY: "frontend-test-secret",
       PERSONA_SEED_PASSWORD: "test-password",
+      SKIP_LETTA_USE: "true",
     },
     stdio: ["ignore", "inherit", "inherit"],
     detached: false,
@@ -124,7 +125,7 @@ beforeAll(async () => {
   });
 
   await waitForHealthcheck();
-});
+}, 20000);
 
 afterAll(async () => {
   if (serverProcess) {

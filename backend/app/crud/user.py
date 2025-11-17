@@ -2,17 +2,31 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.user import User
+from app.models.user_persona_bridge import UserPersonaBridge
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
-    result = await session.execute(select(User).where(User.email == email))
+    result = await session.execute(
+        select(User)
+        .where(User.email == email)
+        .options(
+            selectinload(User.user_personas).selectinload(UserPersonaBridge.persona)
+        )
+    )
     return result.scalar_one_or_none()
 
 
 async def get_user_by_id(session: AsyncSession, user_id: str) -> User | None:
-    result = await session.execute(select(User).where(User.id == user_id))
+    result = await session.execute(
+        select(User)
+        .where(User.id == user_id)
+        .options(
+            selectinload(User.user_personas).selectinload(UserPersonaBridge.persona)
+        )
+    )
     return result.scalar_one_or_none()
 
 
@@ -38,7 +52,15 @@ async def create_user(
     session.add(user)
     await session.commit()
     await session.refresh(user)
-    return user
+
+    result = await session.execute(
+        select(User)
+        .where(User.id == user.id)
+        .options(
+            selectinload(User.user_personas).selectinload(UserPersonaBridge.persona)
+        )
+    )
+    return result.scalar_one()
 
 
 async def update_user_letta_agent_id(
@@ -48,5 +70,5 @@ async def update_user_letta_agent_id(
     if user:
         user.letta_agent_id = letta_agent_id
         await session.commit()
-        await session.refresh(user)
+        user = await get_user_by_id(session, user_id)
     return user
