@@ -1,8 +1,11 @@
+import logging
+import os
 from typing import Optional
 
 from letta_client import Letta
 from pydantic import BaseModel
-import os
+
+logger = logging.getLogger(__name__)
 
 
 class LettaConfig(BaseModel):
@@ -15,8 +18,18 @@ class LettaAgentResponse(BaseModel):
     message_content: str
 
 
-def create_letta_client(base_url: str, token: Optional[str] = None) -> Letta:
-    return Letta(base_url=base_url, token=token)
+def create_letta_client(
+    base_url: str, token: Optional[str] = None, timeout: float = 30.0
+) -> Letta:
+    """
+    Create a Letta client with configurable timeout.
+
+    Args:
+        base_url: The Letta server base URL
+        token: Optional authentication token
+        timeout: HTTP request timeout in seconds (default: 30)
+    """
+    return Letta(base_url=base_url, token=token, timeout=timeout)
 
 
 def _load_pi_agent_config() -> dict:
@@ -91,7 +104,7 @@ def create_simple_agent(
 def register_mock_tools(client: Letta) -> list[str]:
     """Register simple mock tool functions with Letta server."""
     import inspect
-    from agent.tools import placer_tools
+    from agent.tools import placer_tools, persona_tools
 
     registered = []
 
@@ -102,6 +115,8 @@ def register_mock_tools(client: Letta) -> list[str]:
         placer_tools.get_trade_area_profile,
         placer_tools.get_audience_profile,
         placer_tools.get_visit_flows,
+        persona_tools.list_available_personas,
+        persona_tools.update_user_persona_profile_in_db,
     ]
 
     for func in tool_functions:
@@ -110,7 +125,7 @@ def register_mock_tools(client: Letta) -> list[str]:
             created = client.tools.create(source_code=source_code)
             registered.append(created.name)
         except Exception as e:
-            print(f"Failed to register tool {func.__name__}: {e}")
+            logger.warning("Failed to register tool %s: %s", func.__name__, e)
 
     return registered
 

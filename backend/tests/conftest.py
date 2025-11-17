@@ -5,9 +5,15 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 project_root = Path(__file__).resolve().parents[1]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+env_file = project_root / ".env"
+if env_file.exists():
+    load_dotenv(env_file)
 
 import pytest  # noqa: E402
 
@@ -37,6 +43,39 @@ def configure_test_environment(tmp_path_factory: pytest.TempPathFactory) -> None
         if not os.environ.get("SKIP_PERSONA_SEED"):
             session_factory = get_session_factory()
             async with session_factory() as session:
+                # First create the persona definitions (normally done via migration)
+                from app.models.persona import Persona
+                from uuid import uuid4
+
+                personas = [
+                    Persona(
+                        id=str(uuid4()),
+                        persona_handle="qsr_real_estate",
+                        persona_character_name="sarah",
+                        industry="QSR / Fast Casual",
+                        professional_role="Director of Real Estate",
+                        description="Director of Real Estate for a fast-casual chain.",
+                        typical_kpis="New store performance, portfolio productivity",
+                        typical_motivations="Data-driven site selection",
+                        quintessential_queries="Site selection vs comps",
+                    ),
+                    Persona(
+                        id=str(uuid4()),
+                        persona_handle="tobacco_consumer_insights",
+                        persona_character_name="daniel",
+                        industry="Tobacco / CPG",
+                        professional_role="Director of Consumer Insights",
+                        description="Director of Consumer Insights for tobacco company.",
+                        typical_kpis="Launch performance, channel strategy",
+                        typical_motivations="De-risk launches with behavioral data",
+                        quintessential_queries="Golf path-to-purchase mapping",
+                    ),
+                ]
+                for persona in personas:
+                    session.add(persona)
+                await session.commit()
+
+                # Then seed users with persona assignments
                 await seed_personas(session)
 
     asyncio.run(prepare_schema())

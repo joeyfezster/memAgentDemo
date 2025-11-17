@@ -1,5 +1,9 @@
 """seed personas table
 
+This migration seeds the personas table with initial persona taxonomy.
+Persona handles follow the convention: <industry>_<professional_role>
+Examples: qsr_real_estate, tobacco_consumer_insights
+
 Revision ID: seed_personas
 Revises: add_letta_agent_id
 Create Date: 2025-02-14
@@ -21,7 +25,7 @@ def upgrade() -> None:
     personas = [
         {
             "id": str(uuid4()),
-            "persona_handle": "director_real_estate_qsr",
+            "persona_handle": "qsr_real_estate",
             "persona_character_name": "sarah",
             "industry": "QSR / Fast Casual",
             "professional_role": "Director of Real Estate",
@@ -32,7 +36,7 @@ def upgrade() -> None:
         },
         {
             "id": str(uuid4()),
-            "persona_handle": "consumer_insights_tobacco",
+            "persona_handle": "tobacco_consumer_insights",
             "persona_character_name": "daniel",
             "industry": "Tobacco / CPG",
             "professional_role": "Director of Consumer Insights & Activation",
@@ -61,4 +65,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM persona")
+    op.execute(
+        "DELETE FROM persona WHERE persona_handle IN ('qsr_real_estate', 'tobacco_consumer_insights')"
+    )

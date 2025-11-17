@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,8 @@ from app.crud.message import create_message
 from app.crud.user import get_user_by_email
 from app.models.message import MessageRole
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -83,7 +86,7 @@ async def seed_personas(session: AsyncSession) -> None:
 
     skip_letta = os.getenv("SKIP_LETTA_USE") == "1"
     if skip_letta:
-        print("Skipping Letta integration (SKIP_LETTA_USE=1)")
+        logger.info("Skipping Letta integration (SKIP_LETTA_USE=1)")
 
     settings = get_settings()
     letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
@@ -107,16 +110,19 @@ async def seed_personas(session: AsyncSession) -> None:
                                 letta_client.delete_agent(agent.id)
                                 orphaned_count += 1
                             except Exception as e:
-                                print(
-                                    f"Warning: Could not delete orphaned agent {agent.id}: {e}"
+                                logger.warning(
+                                    "Warning: Could not delete orphaned agent %s: %s",
+                                    agent.id,
+                                    e,
                                 )
 
                     if orphaned_count > 0:
-                        print(
-                            f"Cleaned up {orphaned_count} orphaned Letta agents during seed"
+                        logger.info(
+                            "Cleaned up %s orphaned Letta agents during seed",
+                            orphaned_count,
                         )
         except Exception as e:
-            print(f"Warning: Could not create Letta client: {e}")
+            logger.warning("Warning: Could not create Letta client: %s", e)
 
     created_users = {}
 
@@ -137,8 +143,10 @@ async def seed_personas(session: AsyncSession) -> None:
                     )
                     user.letta_agent_id = agent_id
                 except Exception as e:
-                    print(
-                        f"Warning: Could not create Letta agent for {user.email}: {e}"
+                    logger.warning(
+                        "Warning: Could not create Letta agent for %s: %s",
+                        user.email,
+                        e,
                     )
         else:
             new_user = User(
@@ -156,8 +164,10 @@ async def seed_personas(session: AsyncSession) -> None:
                     )
                     new_user.letta_agent_id = agent_id
                 except Exception as e:
-                    print(
-                        f"Warning: Could not create Letta agent for {new_user.email}: {e}"
+                    logger.warning(
+                        "Warning: Could not create Letta agent for %s: %s",
+                        new_user.email,
+                        e,
                     )
 
             session.add(new_user)
@@ -167,18 +177,15 @@ async def seed_personas(session: AsyncSession) -> None:
 
     await session.commit()
 
-    if letta_client:
+    if letta_client and "sarah" in created_users and "daniel" in created_users:
         try:
             sarah = created_users.get("sarah")
             daniel = created_users.get("daniel")
-            emma = created_users.get("emma")
 
             if sarah:
                 await session.refresh(sarah)
             if daniel:
                 await session.refresh(daniel)
-            if emma:
-                await session.refresh(emma)
 
             from app.crud.conversation import get_user_conversations
             from app.crud.message import get_conversation_messages
@@ -223,14 +230,17 @@ async def seed_personas(session: AsyncSession) -> None:
                                 role=MessageRole.AGENT,
                                 content=response.message_content,
                             )
-                            await session.commit()
                         except Exception as e:
-                            print(f"Warning: Failed to process query for Sarah: {e}")
+                            logger.warning(
+                                "Warning: Could not send message to Sarah's agent: %s",
+                                e,
+                            )
                             break
 
-                    print("Created comprehensive interaction sequence for Sarah")
+                    await session.commit()
+                    logger.info("Created comprehensive interaction sequence for Sarah")
                 else:
-                    print("Sarah already has messages, skipping")
+                    logger.info("Sarah already has messages, skipping")
 
             if daniel and daniel.letta_agent_id:
                 daniel_convs = await get_user_conversations(session, daniel.id)
@@ -266,56 +276,8 @@ async def seed_personas(session: AsyncSession) -> None:
                     )
 
                     await session.commit()
-                    print("Created initial conversation for Daniel")
+                    logger.info("Created initial conversation for Daniel")
                 else:
-                    print("Daniel already has messages, skipping")
-
-            if emma and emma.letta_agent_id:
-                emma_convs = await get_user_conversations(session, emma.id)
-                emma_has_messages = False
-
-                if emma_convs:
-                    for conv in emma_convs:
-                        messages = await get_conversation_messages(session, conv.id)
-                        if messages:
-                            emma_has_messages = True
-                            break
-
-                if not emma_has_messages:
-                    emma_conv = await create_conversation(session, user_id=emma.id)
-
-                    emma_queries = [
-                        "Hello! I'm Emma, Director of Real Estate for a regional pizza chain. We're looking to expand into new markets and I could use help with site selection.",
-                        "We're considering expansion in the Dallas area. Can you help me find shopping centers and restaurant locations that would be good for a pizza restaurant? I want to understand the competitive landscape.",
-                        "Perfect! Now can you show me which of these locations have the strongest visitor patterns? I need to benchmark performance metrics like visit frequency and understand trade area overlap.",
-                    ]
-
-                    for query in emma_queries:
-                        try:
-                            response = send_message_to_agent(
-                                letta_client, emma.letta_agent_id, query
-                            )
-
-                            await create_message(
-                                session,
-                                conversation_id=emma_conv.id,
-                                role=MessageRole.USER,
-                                content=query,
-                            )
-                            await create_message(
-                                session,
-                                conversation_id=emma_conv.id,
-                                role=MessageRole.AGENT,
-                                content=response.message_content,
-                            )
-                            await session.commit()
-                        except Exception as e:
-                            print(f"Warning: Failed to process query for Emma: {e}")
-                            break
-
-                    print("Created interaction sequence for Emma")
-                else:
-                    print("Emma already has messages, skipping")
-
+                    logger.info("Daniel already has messages, skipping")
         except Exception as e:
-            print(f"Warning: Could not create initial conversations for personas: {e}")
+            logger.warning("Warning: Could not create initial conversations: %s", e)
