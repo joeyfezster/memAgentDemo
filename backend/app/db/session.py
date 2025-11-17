@@ -51,5 +51,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-# Initialize engine on import using default settings
 init_engine()
+
+from app.db import events  # noqa: E402, F401

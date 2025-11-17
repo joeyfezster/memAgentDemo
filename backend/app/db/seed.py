@@ -75,6 +75,10 @@ def load_user_records() -> list[UserRecord]:
 
 
 async def seed_personas(session: AsyncSession) -> None:
+    from app.crud.persona import get_persona_by_handle
+
+    skip_persona_seed = os.getenv("SKIP_PERSONA_SEED") == "1"
+
     user_records = load_user_records()
     if not user_records:
         return
@@ -167,13 +171,48 @@ async def seed_personas(session: AsyncSession) -> None:
 
     await session.commit()
 
+    # Skip persona assignment if SKIP_PERSONA_SEED is set
+    # (users are still created for authentication tests)
+    if skip_persona_seed:
+        print("Skipping persona assignment (SKIP_PERSONA_SEED=1)")
+        return
+
+    qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
+    tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
+
+    if not qsr_persona or not tobacco_persona:
+        print("Warning: Personas not found. Run migrations to seed personas.")
+        return
+
     if letta_client and "sarah" in created_users and "daniel" in created_users:
         try:
+            from app.crud.persona import get_persona_by_handle, assign_persona_to_user
+            from app.services.persona_service import (
+                attach_persona_blocks_to_agents_of_users_with_persona_handle,
+            )
+
             sarah = created_users["sarah"]
             daniel = created_users["daniel"]
 
             await session.refresh(sarah)
             await session.refresh(daniel)
+
+            qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
+            tobacco_persona = await get_persona_by_handle(
+                session, "tobacco_consumer_insights"
+            )
+
+            if qsr_persona and sarah.letta_agent_id:
+                await assign_persona_to_user(session, sarah.id, qsr_persona.id)
+                await attach_persona_blocks_to_agents_of_users_with_persona_handle(
+                    session, letta_client, "qsr_real_estate"
+                )
+
+            if tobacco_persona and daniel.letta_agent_id:
+                await assign_persona_to_user(session, daniel.id, tobacco_persona.id)
+                await attach_persona_blocks_to_agents_of_users_with_persona_handle(
+                    session, letta_client, "tobacco_consumer_insights"
+                )
 
             if sarah.letta_agent_id and daniel.letta_agent_id:
                 from app.crud.conversation import get_user_conversations
