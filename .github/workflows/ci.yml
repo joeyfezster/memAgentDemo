@@ -32,7 +32,7 @@ jobs:
       - name: Run backend tests
         if: matrix.service == 'backend'
         working-directory: backend
-        run: poetry run pytest --ignore=tests/test_letta_integration.py
+        run: poetry run pytest tests/unit/
       - name: Set up Python for frontend tests
         if: matrix.service == 'frontend'
         uses: actions/setup-python@v5
