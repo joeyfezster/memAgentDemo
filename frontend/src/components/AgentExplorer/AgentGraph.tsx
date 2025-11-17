@@ -103,7 +103,14 @@ export default function AgentGraph({ agents, blocks }: AgentGraphProps) {
   }, [updatePositions]);
 
   const edges = useMemo(() => {
-    const connections: Array<{ id: string; x1: number; y1: number; x2: number; y2: number; color: string }> = [];
+    const connections: Array<{
+      id: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      color: string;
+    }> = [];
     agents.forEach((agent) => {
       agent.memory_blocks.forEach((block) => {
         const agentPos = agentPositions[agent.id];
@@ -150,7 +157,11 @@ export default function AgentGraph({ agents, blocks }: AgentGraphProps) {
             style={{ borderColor: AGENT_NODE_COLOR }}
             ref={registerAgentRef(agent.id)}
           >
-            <strong>{agent.name ?? agent.metadata?.handle ?? agent.id}</strong>
+            <strong>
+              {agent.name ||
+                (agent.metadata?.handle as string | undefined) ||
+                agent.id}
+            </strong>
             <span>{agent.user?.display_name ?? "Unassigned"}</span>
           </div>
         ))}
@@ -167,7 +178,8 @@ export default function AgentGraph({ agents, blocks }: AgentGraphProps) {
             <strong>{summary.block.label ?? "(unlabeled)"}</strong>
             <span>{summary.block.id}</span>
             <span className="agent-graph__badge">
-              {summary.agentIds.length} agent{summary.agentIds.length === 1 ? "" : "s"}
+              {summary.agentIds.length} agent
+              {summary.agentIds.length === 1 ? "" : "s"}
             </span>
           </div>
         ))}
