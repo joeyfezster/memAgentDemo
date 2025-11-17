@@ -80,7 +80,7 @@ jobs:
           LETTA_SECURE: false
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          poetry run pytest tests/test_letta_integration.py -v
+          poetry run pytest tests/letta/ -v
 
       - name: Show Letta logs on failure
         if: failure()

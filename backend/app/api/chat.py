@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.letta_client import (
+    create_letta_client,
+    create_pi_agent,
+    send_message_to_agent,
+)
 from app.crud import conversation as conversation_crud
 from app.crud import message as message_crud
+from app.crud.user import update_user_letta_agent_id
 from app.db.session import get_session
 from app.models.message import MessageRole
 from app.models.user import User
@@ -109,6 +116,41 @@ async def send_message_to_conversation(
     )
 
     assistant_reply = f"hi {current_user.display_name}"
+
+    if current_user.letta_agent_id:
+        letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
+        letta_token = os.getenv("LETTA_SERVER_PASSWORD")
+
+        try:
+            letta_client = create_letta_client(letta_base_url, letta_token)
+            response = send_message_to_agent(
+                letta_client, current_user.letta_agent_id, payload.content
+            )
+            assistant_reply = response.message_content
+        except Exception as e:
+            print(f"Error calling Letta agent: {e}")
+            assistant_reply = "Sorry, I encountered an error processing your message."
+    else:
+        try:
+            letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
+            letta_token = os.getenv("LETTA_SERVER_PASSWORD")
+            letta_client = create_letta_client(letta_base_url, letta_token)
+
+            agent_id = create_pi_agent(
+                letta_client,
+                user_display_name=current_user.display_name,
+                initial_user_persona_info="",
+            )
+
+            await update_user_letta_agent_id(session, current_user.id, agent_id)
+            current_user.letta_agent_id = agent_id
+
+            response = send_message_to_agent(letta_client, agent_id, payload.content)
+            assistant_reply = response.message_content
+        except Exception as e:
+            print(f"Error creating/using Letta agent: {e}")
+            assistant_reply = f"hi {current_user.display_name}"
+
     assistant_message = await message_crud.create_message(
         session,
         conversation_id=conversation_id,
