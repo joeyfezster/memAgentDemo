@@ -15,8 +15,18 @@ class LettaAgentResponse(BaseModel):
     message_content: str
 
 
-def create_letta_client(base_url: str, token: Optional[str] = None) -> Letta:
-    return Letta(base_url=base_url, token=token)
+def create_letta_client(
+    base_url: str, token: Optional[str] = None, timeout: float = 30.0
+) -> Letta:
+    """
+    Create a Letta client with configurable timeout.
+
+    Args:
+        base_url: The Letta server base URL
+        token: Optional authentication token
+        timeout: HTTP request timeout in seconds (default: 30)
+    """
+    return Letta(base_url=base_url, token=token, timeout=timeout)
 
 
 def _load_pi_agent_config() -> dict:

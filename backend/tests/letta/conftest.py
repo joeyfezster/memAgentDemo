@@ -30,7 +30,7 @@ def letta_client():
             "Letta server must be configured. Set LETTA_BASE_URL and LETTA_SERVER_PASSWORD environment variables."
         )
 
-    client = create_letta_client(base_url, token)
+    client = create_letta_client(base_url, token, timeout=180.0)
 
     try:
         client.agents.list()
