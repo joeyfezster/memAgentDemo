@@ -78,7 +78,7 @@ lint-frontend:
 test: test-backend test-frontend
 
 test-backend:
-	$(call run_backend,poetry run pytest)
+	$(call run_backend,poetry run pytest tests/unit/)
 
 test-frontend:
 	$(call run_frontend,pnpm test -- --run)
@@ -96,4 +96,4 @@ migrate:
 	$(call run_backend,poetry run alembic upgrade head)
 
 test-letta:
-	@cd backend && source ../.venv/bin/activate && "$(POETRY)" run pytest tests/test_letta_integration.py -v
+	@cd backend && ../.venv/bin/poetry run pytest tests/letta/ -v
