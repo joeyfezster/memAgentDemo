@@ -149,9 +149,7 @@ async def send_message_to_conversation(
             assistant_reply = response.message_content
         except Exception as e:
             print(f"Error creating/using Letta agent: {e}")
-            assistant_reply = (
-                f"Hello {current_user.display_name}, I'm your Pi assistant."
-            )
+            assistant_reply = f"hi {current_user.display_name}"
 
     assistant_message = await message_crud.create_message(
         session,

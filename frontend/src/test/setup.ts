@@ -74,7 +74,7 @@ function findUvicorn(): { command: string; args: string[] } {
   };
 }
 
-async function waitForHealthcheck(retries = 30, delayMs = 200): Promise<void> {
+async function waitForHealthcheck(retries = 50, delayMs = 300): Promise<void> {
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
       const result = await new Promise<boolean>((resolve) => {
