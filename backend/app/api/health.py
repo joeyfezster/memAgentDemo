@@ -21,6 +21,15 @@ def read_health() -> dict[str, str]:
 @router.get("/healthz/letta", tags=["health"])
 def read_letta_health() -> dict[str, str | bool]:
     """Check if Letta integration is available and working."""
+    skip_letta = os.getenv("SKIP_LETTA_USE", "").lower() == "true"
+
+    if skip_letta:
+        return {
+            "status": "ok",
+            "letta_available": False,
+            "message": "Letta disabled (SKIP_LETTA_USE=true)",
+        }
+
     letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
     letta_token = os.getenv("LETTA_SERVER_PASSWORD")
 

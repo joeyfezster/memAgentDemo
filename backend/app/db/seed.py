@@ -86,32 +86,39 @@ def load_user_records() -> list[UserRecord]:
 async def seed_personas(session: AsyncSession) -> None:
     user_records = load_user_records()
     if not user_records:
+        print("No user records found to seed")
         return
 
     settings = get_settings()
     letta_base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
     letta_token = os.getenv("LETTA_SERVER_PASSWORD")
+    skip_letta = os.getenv("SKIP_LETTA_USE", "").lower() == "true"
+
+    print(f"Seed starting - SKIP_LETTA_USE: {skip_letta}")
 
     letta_client = None
-    max_retries = 10
-    retry_delay = 1.0
+    max_retries = 1 if skip_letta else 10
+    retry_delay = 0.1 if skip_letta else 1.0
 
-    for attempt in range(max_retries):
-        try:
-            letta_client = create_letta_client(letta_base_url, letta_token)
-            print(f"Successfully connected to Letta on attempt {attempt + 1}")
-            break
-        except Exception as e:
-            if attempt < max_retries - 1:
-                print(
-                    f"Attempt {attempt + 1}/{max_retries}: Letta not ready yet, retrying in {retry_delay}s..."
-                )
-                await asyncio.sleep(retry_delay)
-                retry_delay *= 1.5
-            else:
-                print(
-                    f"Warning: Could not create Letta client after {max_retries} attempts: {e}"
-                )
+    if not skip_letta:
+        for attempt in range(max_retries):
+            try:
+                letta_client = create_letta_client(letta_base_url, letta_token)
+                print(f"Successfully connected to Letta on attempt {attempt + 1}")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(
+                        f"Attempt {attempt + 1}/{max_retries}: Letta not ready yet, retrying in {retry_delay}s..."
+                    )
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 1.5
+                else:
+                    print(
+                        f"Warning: Could not create Letta client after {max_retries} attempts: {e}"
+                    )
+    else:
+        print("TESTING mode: Skipping Letta client creation")
 
     created_users = {}
 
@@ -152,8 +159,9 @@ async def seed_personas(session: AsyncSession) -> None:
                 session.add(bridge)
 
             if letta_client and not user.letta_agent_id:
-                agent_retry_delay = 2.0
-                for agent_attempt in range(5):
+                agent_max_retries = 1 if skip_letta else 5
+                agent_retry_delay = 0.1 if skip_letta else 2.0
+                for agent_attempt in range(agent_max_retries):
                     try:
                         agent_id = create_pi_agent(
                             letta_client,
@@ -163,15 +171,15 @@ async def seed_personas(session: AsyncSession) -> None:
                         user.letta_agent_id = agent_id
                         break
                     except Exception as e:
-                        if agent_attempt < 4:
+                        if agent_attempt < agent_max_retries - 1:
                             print(
-                                f"Attempt {agent_attempt + 1}/5: Could not create agent for {user.email}, retrying in {agent_retry_delay}s..."
+                                f"Attempt {agent_attempt + 1}/{agent_max_retries}: Could not create agent for {user.email}, retrying in {agent_retry_delay}s..."
                             )
                             await asyncio.sleep(agent_retry_delay)
                             agent_retry_delay *= 1.5
                         else:
                             print(
-                                f"Warning: Could not create Letta agent for {user.email} after 5 attempts: {e}"
+                                f"Warning: Could not create Letta agent for {user.email} after {agent_max_retries} attempts: {e}"
                             )
         else:
             new_user = User(
@@ -187,8 +195,9 @@ async def seed_personas(session: AsyncSession) -> None:
             session.add(bridge)
 
             if letta_client:
-                agent_retry_delay = 2.0
-                for agent_attempt in range(5):
+                agent_max_retries = 1 if skip_letta else 5
+                agent_retry_delay = 0.1 if skip_letta else 2.0
+                for agent_attempt in range(agent_max_retries):
                     try:
                         agent_id = create_pi_agent(
                             letta_client,
@@ -198,15 +207,15 @@ async def seed_personas(session: AsyncSession) -> None:
                         new_user.letta_agent_id = agent_id
                         break
                     except Exception as e:
-                        if agent_attempt < 4:
+                        if agent_attempt < agent_max_retries - 1:
                             print(
-                                f"Attempt {agent_attempt + 1}/5: Could not create agent for {new_user.email}, retrying in {agent_retry_delay}s..."
+                                f"Attempt {agent_attempt + 1}/{agent_max_retries}: Could not create agent for {new_user.email}, retrying in {agent_retry_delay}s..."
                             )
                             await asyncio.sleep(agent_retry_delay)
                             agent_retry_delay *= 1.5
                         else:
                             print(
-                                f"Warning: Could not create Letta agent for {new_user.email} after 5 attempts: {e}"
+                                f"Warning: Could not create Letta agent for {new_user.email} after {agent_max_retries} attempts: {e}"
                             )
 
             session.add(new_user)
@@ -216,7 +225,12 @@ async def seed_personas(session: AsyncSession) -> None:
 
     await session.commit()
 
-    if letta_client and "sarah" in created_users and "daniel" in created_users:
+    if (
+        not skip_letta
+        and letta_client
+        and "sarah" in created_users
+        and "daniel" in created_users
+    ):
         try:
             sarah = created_users["sarah"]
             daniel = created_users["daniel"]
@@ -252,8 +266,8 @@ async def seed_personas(session: AsyncSession) -> None:
 
                 timestamp = datetime.now().strftime("%d-%m:%H:%M")
 
-                max_message_retries = 10
-                message_retry_delay = 3.0
+                max_message_retries = 1 if skip_letta else 10
+                message_retry_delay = 0.1 if skip_letta else 3.0
 
                 if not sarah_has_messages:
                     sarah_conv = await create_conversation(session, user_id=sarah.id)
@@ -301,7 +315,7 @@ async def seed_personas(session: AsyncSession) -> None:
                 else:
                     print("Sarah already has messages, skipping")
 
-                message_retry_delay = 3.0
+                message_retry_delay = 0.1 if skip_letta else 3.0
                 if not daniel_has_messages:
                     daniel_conv = await create_conversation(session, user_id=daniel.id)
                     daniel_response = None

@@ -8,6 +8,9 @@ let lettaAvailable = false;
 
 describe("App", () => {
   beforeAll(async () => {
+    // Wait a bit for the test server to start
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     try {
       const response = await fetch(
         `${
@@ -25,7 +28,7 @@ describe("App", () => {
       console.log("Could not check Letta availability:", error);
       lettaAvailable = false;
     }
-  });
+  }, 25000);
 
   beforeEach(() => {
     window.localStorage.clear();
@@ -66,6 +69,11 @@ describe("App", () => {
       { timeout: 5000 },
     );
     expect(chatInput).toBeInTheDocument();
+
+    if (!lettaAvailable) {
+      console.log("Skipping message sending - Letta not available");
+      return;
+    }
 
     await user.type(chatInput, "Hello there");
     const sendButton = screen.getByRole("button", { name: /send/i });
@@ -115,6 +123,12 @@ describe("App", () => {
       {},
       { timeout: 5000 },
     );
+
+    if (!lettaAvailable) {
+      console.log("Skipping message sending - Letta not available");
+      return;
+    }
+
     await user.type(chatInput, "First message");
     const sendButton = screen.getByRole("button", { name: /send/i });
     await user.click(sendButton);
