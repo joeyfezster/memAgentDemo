@@ -10,8 +10,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "create_personas"
-down_revision: Union[str, None] = "change_message_role_to_enum"
+revision: str = "v004"
+down_revision: Union[str, None] = "v003"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -20,7 +20,8 @@ def upgrade() -> None:
     op.create_table(
         "persona",
         sa.Column("id", sa.String(length=36), primary_key=True),
-        sa.Column("name", sa.String(length=255), nullable=False, unique=True),
+        sa.Column("persona_handle", sa.String(length=255), nullable=False, unique=True),
+        sa.Column("persona_character_name", sa.String(length=255), nullable=True),
         sa.Column("industry", sa.String(length=255), nullable=False),
         sa.Column("professional_role", sa.String(length=255), nullable=False),
         sa.Column("description", sa.Text, nullable=False),
@@ -40,7 +41,9 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index("ix_persona_name", "persona", ["name"], unique=True)
+    op.create_index(
+        "ix_persona_persona_handle", "persona", ["persona_handle"], unique=True
+    )
 
     op.create_table(
         "user_persona",
@@ -71,5 +74,5 @@ def downgrade() -> None:
     op.drop_index("ix_user_persona_persona_id", table_name="user_persona")
     op.drop_index("ix_user_persona_user_id", table_name="user_persona")
     op.drop_table("user_persona")
-    op.drop_index("ix_persona_name", table_name="persona")
+    op.drop_index("ix_persona_persona_handle", table_name="persona")
     op.drop_table("persona")
