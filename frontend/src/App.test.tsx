@@ -218,7 +218,7 @@ describe("App", () => {
     await user.click(sendButton);
 
     const reply = await screen.findByText(
-      (content, element) => {
+      (_content, element) => {
         const hasText =
           element?.textContent?.toLowerCase().includes("pi") ?? false;
         const isNotFallback = !(
