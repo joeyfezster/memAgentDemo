@@ -1,4 +1,5 @@
 from typing import Optional
+
 from letta_client import Letta
 from pydantic import BaseModel
 import os
@@ -69,6 +70,7 @@ def create_simple_agent(
     memory_blocks: Optional[list[dict]] = None,
     model: str = "openai/gpt-4o-mini",
     embedding: str = "openai/text-embedding-3-small",
+    tools: Optional[list[str]] = None,
 ) -> str:
     if memory_blocks is None:
         memory_blocks = [
@@ -81,8 +83,36 @@ def create_simple_agent(
         model=model,
         embedding=embedding,
         context_window_limit=16000,
+        tools=tools,
     )
     return agent_state.id
+
+
+def register_mock_tools(client: Letta) -> list[str]:
+    """Register simple mock tool functions with Letta server."""
+    import inspect
+    from agent.tools import placer_tools
+
+    registered = []
+
+    tool_functions = [
+        placer_tools.search_places,
+        placer_tools.get_place_summary,
+        placer_tools.compare_performance,
+        placer_tools.get_trade_area_profile,
+        placer_tools.get_audience_profile,
+        placer_tools.get_visit_flows,
+    ]
+
+    for func in tool_functions:
+        try:
+            source_code = inspect.getsource(func)
+            created = client.tools.create(source_code=source_code)
+            registered.append(created.name)
+        except Exception as e:
+            print(f"Failed to register tool {func.__name__}: {e}")
+
+    return registered
 
 
 def send_message_to_agent(
