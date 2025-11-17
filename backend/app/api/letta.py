@@ -38,9 +38,7 @@ def _serialize_model(model: Any) -> dict[str, Any]:
         return dict(model)
     if hasattr(model, "__dict__"):
         return {
-            key: value
-            for key, value in vars(model).items()
-            if not key.startswith("_")
+            key: value for key, value in vars(model).items() if not key.startswith("_")
         }
     return {"value": model}
 
@@ -93,9 +91,7 @@ async def get_agents_overview(
         ) from exc
 
     users = await user_crud.list_users(session)
-    agent_to_user = {
-        user.letta_agent_id: user for user in users if user.letta_agent_id
-    }
+    agent_to_user = {user.letta_agent_id: user for user in users if user.letta_agent_id}
 
     serialized_agents: list[AgentOverviewSchema] = []
     total_blocks = 0
@@ -172,9 +168,7 @@ async def get_agents_overview(
     )
 
 
-@router.get(
-    "/agents/{agent_id}/archival", response_model=AgentArchivalResponse
-)
+@router.get("/agents/{agent_id}/archival", response_model=AgentArchivalResponse)
 async def get_agent_archival_entries(
     agent_id: str,
     limit: int = 7,
@@ -222,3 +216,50 @@ async def get_agent_archival_entries(
         requested_limit=safe_limit,
         returned_count=len(entries),
     )
+
+
+@router.post("/agents/cleanup")
+async def cleanup_orphaned_agents(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, Any]:
+    """Remove agents from Letta that don't have a corresponding user in our database."""
+    del current_user  # Admin endpoint
+
+    letta_client = _create_client()
+
+    try:
+        agent_states = list(letta_client.agents.list())
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.exception("Unable to list agents from Letta")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to list Letta agents",
+        ) from exc
+
+    users = await user_crud.list_users(session)
+    valid_agent_ids = {user.letta_agent_id for user in users if user.letta_agent_id}
+
+    deleted_agents = []
+    kept_agents = []
+
+    for agent_state in agent_states:
+        agent_data = _serialize_model(agent_state)
+        agent_id = str(agent_data.get("id") or getattr(agent_state, "id", ""))
+
+        if agent_id in valid_agent_ids:
+            kept_agents.append(agent_id)
+        else:
+            try:
+                letta_client.agents.delete(agent_id=agent_id)
+                deleted_agents.append(agent_id)
+                logger.info("Deleted orphaned agent: %s", agent_id)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Failed to delete agent %s: %s", agent_id, exc)
+
+    return {
+        "deleted_count": len(deleted_agents),
+        "kept_count": len(kept_agents),
+        "deleted_agents": deleted_agents[:10],  # Show first 10
+        "kept_agents": kept_agents,
+    }

@@ -28,8 +28,10 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/memagent
       LETTA_BASE_URL: http://letta:8283
     depends_on:
-      - postgres
-      - letta
+      postgres:
+        condition: service_healthy
+      letta:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
@@ -70,6 +72,12 @@ services:
       - "8283:8283"
     volumes:
       - letta_data:/root/.letta
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8283/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
 volumes:
   postgres_data:

@@ -24,6 +24,7 @@ def configure_test_environment(tmp_path_factory: pytest.TempPathFactory) -> None
     os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path}"
     os.environ["JWT_SECRET_KEY"] = "test-secret-key"
     os.environ["PERSONA_SEED_PASSWORD"] = "test-password"
+    os.environ["SKIP_LETTA_USE"] = "1"
     get_settings.cache_clear()
     init_engine()
 
