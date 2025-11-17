@@ -95,5 +95,13 @@ frontend-shell:
 migrate:
 	$(call run_backend,poetry run alembic upgrade head)
 
+db-seed:
+	@echo "Seeding database..."
+	@if [ "$(USE_DOCKER)" = "1" ]; then \
+		docker exec infra-backend-1 python -c "from app.db.session import get_db; from app.db.seed import seed_database; import asyncio; asyncio.run(next(get_db().__aiter__()).__anext__().then(lambda db: seed_database(db)))"; \
+	else \
+		cd backend && poetry run python -c "from app.db.session import get_db; from app.db.seed import seed_database; import asyncio; async def run(): async for db in get_db(): await seed_database(db); break; asyncio.run(run())"; \
+	fi
+
 test-letta:
 	@cd backend && ../.venv/bin/poetry run pytest tests/letta/ -v

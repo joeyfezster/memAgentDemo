@@ -15,8 +15,8 @@ from uuid import uuid4
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "seed_personas"
-down_revision: Union[str, None] = "add_letta_agent_id"
+revision: str = "v006"
+down_revision: Union[str, None] = "v005"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import logging
 import os
 from dataclasses import dataclass
@@ -79,10 +78,6 @@ def load_user_records() -> list[UserRecord]:
 
 
 async def seed_personas(session: AsyncSession) -> None:
-    from app.crud.persona import get_persona_by_handle
-
-    skip_persona_seed = os.getenv("SKIP_PERSONA_SEED") == "1"
-
     user_records = load_user_records()
     if not user_records:
         return
@@ -182,58 +177,22 @@ async def seed_personas(session: AsyncSession) -> None:
 
     await session.commit()
 
-    # Skip persona assignment if SKIP_PERSONA_SEED is set
-    # (users are still created for authentication tests)
-    if skip_persona_seed:
-        logger.info("Skipping persona assignment (SKIP_PERSONA_SEED=1)")
-        return
-
-    qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
-    tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
-
-    if not qsr_persona or not tobacco_persona:
-        logger.warning("Warning: Personas not found. Run migrations to seed personas.")
-        return
-
     if letta_client and "sarah" in created_users and "daniel" in created_users:
         try:
-            from app.crud.persona import get_persona_by_handle, assign_persona_to_user
-            from app.services.persona_service import (
-                attach_persona_blocks_to_agents_of_users_with_persona_handle,
-            )
+            sarah = created_users.get("sarah")
+            daniel = created_users.get("daniel")
 
-            sarah = created_users["sarah"]
-            daniel = created_users["daniel"]
+            if sarah:
+                await session.refresh(sarah)
+            if daniel:
+                await session.refresh(daniel)
 
-            await session.refresh(sarah)
-            await session.refresh(daniel)
+            from app.crud.conversation import get_user_conversations
+            from app.crud.message import get_conversation_messages
 
-            qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
-            tobacco_persona = await get_persona_by_handle(
-                session, "tobacco_consumer_insights"
-            )
-
-            if qsr_persona and sarah.letta_agent_id:
-                await assign_persona_to_user(session, sarah.id, qsr_persona.id)
-                await attach_persona_blocks_to_agents_of_users_with_persona_handle(
-                    session, letta_client, "qsr_real_estate"
-                )
-
-            if tobacco_persona and daniel.letta_agent_id:
-                await assign_persona_to_user(session, daniel.id, tobacco_persona.id)
-                await attach_persona_blocks_to_agents_of_users_with_persona_handle(
-                    session, letta_client, "tobacco_consumer_insights"
-                )
-
-            if sarah.letta_agent_id and daniel.letta_agent_id:
-                from app.crud.conversation import get_user_conversations
-                from app.crud.message import get_conversation_messages
-
+            if sarah and sarah.letta_agent_id:
                 sarah_convs = await get_user_conversations(session, sarah.id)
-                daniel_convs = await get_user_conversations(session, daniel.id)
-
                 sarah_has_messages = False
-                daniel_has_messages = False
 
                 if sarah_convs:
                     for conv in sarah_convs:
@@ -242,38 +201,57 @@ async def seed_personas(session: AsyncSession) -> None:
                             sarah_has_messages = True
                             break
 
+                if not sarah_has_messages:
+                    sarah_conv = await create_conversation(session, user_id=sarah.id)
+
+                    sarah_queries = [
+                        "Hi! I'm Sarah, Director of Real Estate for a fast-casual chain. I'm exploring how location analytics can help with site selection.",
+                        "I need to evaluate a candidate site in Atlanta. Can you help me search for fast-casual restaurants in the Atlanta metro area? I'm particularly interested in QSR locations with strong foot traffic.",
+                        "Now I'd like to compare the performance of our top existing locations in Atlanta. Can you analyze visit trends and visitor demographics for the locations you found? I need to see which ones would be good comps for a new site.",
+                        "Great! For the top 3 performing locations, can you show me their trade areas? I need to understand the geographic reach and identify any potential cannibalization risks if we open nearby.",
+                        "This is helpful. What about the visitor profiles - can you break down the demographics and income levels of visitors to these top locations? I want to make sure our new site will attract the right customer base.",
+                    ]
+
+                    for query in sarah_queries:
+                        try:
+                            response = send_message_to_agent(
+                                letta_client, sarah.letta_agent_id, query
+                            )
+
+                            await create_message(
+                                session,
+                                conversation_id=sarah_conv.id,
+                                role=MessageRole.USER,
+                                content=query,
+                            )
+                            await create_message(
+                                session,
+                                conversation_id=sarah_conv.id,
+                                role=MessageRole.AGENT,
+                                content=response.message_content,
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Warning: Could not send message to Sarah's agent: %s",
+                                e,
+                            )
+                            break
+
+                    await session.commit()
+                    logger.info("Created comprehensive interaction sequence for Sarah")
+                else:
+                    logger.info("Sarah already has messages, skipping")
+
+            if daniel and daniel.letta_agent_id:
+                daniel_convs = await get_user_conversations(session, daniel.id)
+                daniel_has_messages = False
+
                 if daniel_convs:
                     for conv in daniel_convs:
                         messages = await get_conversation_messages(session, conv.id)
                         if messages:
                             daniel_has_messages = True
                             break
-
-                if not sarah_has_messages:
-                    sarah_conv = await create_conversation(session, user_id=sarah.id)
-
-                    sarah_intro = "Hi! I'm Sarah, Director of Real Estate for a fast-casual chain. I'm exploring how location analytics can help with site selection."
-
-                    sarah_response = send_message_to_agent(
-                        letta_client, sarah.letta_agent_id, sarah_intro
-                    )
-
-                    await create_message(
-                        session,
-                        conversation_id=sarah_conv.id,
-                        role=MessageRole.USER,
-                        content=sarah_intro,
-                    )
-                    await create_message(
-                        session,
-                        conversation_id=sarah_conv.id,
-                        role=MessageRole.AGENT,
-                        content=sarah_response.message_content,
-                    )
-                    await session.commit()
-                    logger.info("Created initial conversation for Sarah")
-                else:
-                    logger.info("Sarah already has messages, skipping")
 
                 if not daniel_has_messages:
                     daniel_conv = await create_conversation(session, user_id=daniel.id)
@@ -301,9 +279,5 @@ async def seed_personas(session: AsyncSession) -> None:
                     logger.info("Created initial conversation for Daniel")
                 else:
                     logger.info("Daniel already has messages, skipping")
-                logger.info("Created initial conversation between Sarah and Daniel")
         except Exception as e:
-            logger.warning(
-                "Warning: Could not create initial conversation between personas: %s",
-                e,
-            )
+            logger.warning("Warning: Could not create initial conversations: %s", e)
