@@ -103,7 +103,7 @@ def test_agent_uses_multiple_tools(letta_client):
         {
             "label": "agent_persona",
             "limit": 2000,
-            "value": "You are a test assistant. Always use the available tools to answer user questions.",
+            "value": "You are a test assistant. You MUST use the appropriate tools to answer questions. When asked to search, use search_places. When asked to get summaries, use get_place_summary.",
         },
     ]
     agent_id = create_simple_agent(
@@ -113,8 +113,10 @@ def test_agent_uses_multiple_tools(letta_client):
     )
     try:
         prompt = (
-            "First, search for malls in Paramus, NJ. "
-            "Then get the summary for Garden State Plaza for Q1 2024 (January to March 2024)."
+            "Please complete this task in two steps:\n"
+            "Step 1: Use the search_places tool to find malls in Paramus, NJ.\n"
+            "Step 2: Use the get_place_summary tool to get the Q1 2024 summary (January-March 2024) for the place with id 'garden-state-plaza'.\n"
+            "You must call both tools."
         )
         response = letta_client.agents.messages.create(
             agent_id=agent_id,
