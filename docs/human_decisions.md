@@ -35,7 +35,11 @@
 1. Letta does not have the concept of 'threads' or 'conversations' they believe all agent interactions should be part of the persistent memory.
    - my initial reaction is to profoundly disagree with this, as short-term-memory can be useful for ensuring the agent is focused on the current task, and reduces the potential noise from unrelated past interactions
 
-## AI Interaction Guardrails
+### Memory Visualization
+
+1. it is important to me that i can show the memory contents to the assessors of this task, so they may better understand how the memory system works and changes with user interactions
+
+### AI Interaction Guardrails
 
 1. configured linters and precommit hooks to help standardize code quality across ai contributions
 1. created CI jobs with functional front and backend tests to bolster confidence in ai generated code
@@ -51,7 +55,7 @@
 
 1. This solution uses a single agent per user model. While this simplifies implementation and context continuity, it makes task-specialization more difficult. 'learned expertise' gets cluttered as the single agent has to retain the expertise across multiple tasks across multiple users. Task-specialized agents remove one complexity axis (task type).
 1. In addition, task-specialized agents can have more focused toolsets, and prompt engineering, leading to better performance per task and reduced latency.
-1. The current implementation of the shared 'persona_service_experience' memory blocks has a race condition. If two users of the same persona type use the agent simultaneously, they may overwrite each other's shared memory. A more robust implementation would use a versioned or append-only log structure for shared memories.
+1. The current implementation of the shared 'persona_service_experience' memory blocks is less-than-scalable has a race condition. Users may be associated with more personas than there is space inthe context window. Also, if two users of the same persona type use the agent simultaneously, they may overwrite each other's shared memory. A more robust implementation would use a versioned or append-only log structure for shared memories. Best to implement this through a shared archive or RAG service.
 
 ### Governance
 
@@ -66,6 +70,7 @@
 
 1. Add precommit and lint jobs to ci for better code quality enforcement, covering cases of misconfigured local setups
 1. Add a 2-tier review process; initial ai review followed by human review to catch nuanced issues ai might miss
+1. Add CI tests for end-to-end user flows to catch integration issues between front and backend, this is partially implemented.
 
 ## Out of Scope
 

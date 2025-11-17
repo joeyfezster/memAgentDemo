@@ -1,36 +1,10 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
-from app.core.letta_client import create_letta_client
 from app.crud.persona import get_user_personas
 from app.crud.user import get_user_by_email
 from app.db.session import get_session
-
-
-@pytest.fixture
-def letta_client():
-    """Ensure Letta server is available for tests."""
-    base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
-    token = os.getenv("LETTA_SERVER_PASSWORD")
-
-    if not base_url or not token:
-        pytest.fail(
-            "Letta server must be configured. Set LETTA_BASE_URL and LETTA_SERVER_PASSWORD environment variables."
-        )
-
-    client = create_letta_client(base_url, token)
-
-    try:
-        client.agents.list()
-    except Exception as e:
-        pytest.fail(
-            f"Letta server not accessible at {base_url}. Ensure docker-compose services are running. Error: {e}"
-        )
-
-    return client
 
 
 @pytest.mark.asyncio

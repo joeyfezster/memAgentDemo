@@ -75,38 +75,17 @@ def load_user_records() -> list[UserRecord]:
 
 
 async def seed_personas(session: AsyncSession) -> None:
-    from app.models.persona import Persona
     from app.crud.persona import get_persona_by_handle
 
+    if os.getenv("SKIP_PERSONA_SEED") == "1":
+        return
+
     qsr_persona = await get_persona_by_handle(session, "qsr_real_estate")
-    if not qsr_persona:
-        qsr_persona = Persona(
-            persona_handle="qsr_real_estate",
-            industry="QSR",
-            professional_role="Real Estate",
-            description="Quick Service Restaurant professionals focused on site selection and real estate strategy",
-            typical_kpis="Traffic patterns, demographic alignment, competitive density, sales projections per location",
-            typical_motivations="Maximize ROI on new locations, minimize cannibalization, optimize market coverage",
-            quintessential_queries="Best locations for new stores, trade area analysis, competitor proximity analysis",
-        )
-        session.add(qsr_persona)
-
     tobacco_persona = await get_persona_by_handle(session, "tobacco_consumer_insights")
-    if not tobacco_persona:
-        tobacco_persona = Persona(
-            persona_handle="tobacco_consumer_insights",
-            industry="Tobacco",
-            professional_role="Consumer Insights",
-            description="Consumer insights professionals in tobacco industry focusing on market analysis and consumer behavior",
-            typical_kpis="Market share by region, consumer demographics, purchase patterns, brand penetration",
-            typical_motivations="Understand consumer behavior, optimize marketing spend, identify growth opportunities",
-            quintessential_queries="Consumer demographic analysis, competitive market analysis, retail distribution patterns",
-        )
-        session.add(tobacco_persona)
 
-    await session.commit()
-    await session.refresh(qsr_persona)
-    await session.refresh(tobacco_persona)
+    if not qsr_persona or not tobacco_persona:
+        print("Warning: Personas not found. Run migrations to seed personas.")
+        return
 
     user_records = load_user_records()
     if not user_records:

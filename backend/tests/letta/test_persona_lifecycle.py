@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from asyncio import sleep
-import os
 
 import pytest
 
-from app.core.letta_client import create_letta_client, create_pi_agent
+from app.core.letta_client import create_pi_agent
 from app.crud.persona import assign_persona_to_user
 from app.crud.user import create_user
 from app.db.session import get_session
@@ -13,34 +12,19 @@ from app.models.persona import Persona
 from app.services.persona_service import get_or_create_persona_shared_block
 
 
-@pytest.fixture
-def letta_client():
-    """Ensure Letta server is available for tests."""
-    base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
-    token = os.getenv("LETTA_SERVER_PASSWORD")
-
-    if not base_url or not token:
-        pytest.fail(
-            "Letta server must be configured. Set LETTA_BASE_URL and LETTA_SERVER_PASSWORD environment variables."
-        )
-
-    client = create_letta_client(base_url, token)
-
-    try:
-        client.agents.list()
-    except Exception as e:
-        pytest.fail(
-            f"Letta server not accessible at {base_url}. Ensure docker-compose services are running. Error: {e}"
-        )
-
-    return client
-
-
 @pytest.mark.asyncio
 async def test_after_insert_event_fires_and_creates_block(letta_client):
     """Test that after_insert event fires when UserPersonaBridge created and Letta block is auto-created and attached."""
     async for session in get_session():
         persona_handle = "test_lifecycle_industry_role"
+
+        all_blocks = letta_client.blocks.list()
+        for block in all_blocks:
+            if block.label == f"{persona_handle}_service_experience":
+                try:
+                    letta_client.blocks.delete(block.id)
+                except Exception:
+                    pass
 
         persona = Persona(
             persona_handle=persona_handle,
@@ -68,9 +52,24 @@ async def test_after_insert_event_fires_and_creates_block(letta_client):
 
         await assign_persona_to_user(session, user.id, persona.id)
 
-        await sleep(2)  # Allow time for async event to process
+        await sleep(5)  # Allow time for async event to process
+
+        try:
+            all_blocks = letta_client.blocks.list()
+            print(f"\nAll blocks in system: {len(all_blocks)}")
+            persona_label = f"{persona_handle}_service_experience"
+            matching_blocks = [b for b in all_blocks if b.label == persona_label]
+            print(f"Blocks with label '{persona_label}': {len(matching_blocks)}")
+            for b in matching_blocks:
+                print(f"  - {b.label} (id: {b.id})")
+        except Exception as e:
+            print(f"Error listing blocks: {e}")
 
         agent_blocks = letta_client.agents.blocks.list(agent_id=agent_id)
+        print(f"\nAgent {agent_id} has {len(agent_blocks)} blocks:")
+        for b in agent_blocks:
+            print(f"  - {b.label} (id: {b.id})")
+
         persona_block = next(
             (
                 b

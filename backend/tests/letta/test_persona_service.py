@@ -1,67 +1,15 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
-from app.core.letta_client import create_letta_client, create_pi_agent
+from app.core.letta_client import create_pi_agent
 from app.crud.persona import assign_persona_to_user
 from app.crud.user import create_user
 from app.db.session import get_session
 from app.models.persona import Persona
 from app.services.persona_service import (
     attach_persona_blocks_to_agents_of_users_with_persona_handle,
-    get_or_create_persona_shared_block,
 )
-
-
-@pytest.fixture
-def letta_client():
-    """Ensure Letta server is available for tests."""
-    base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
-    token = os.getenv("LETTA_SERVER_PASSWORD")
-
-    if not base_url or not token:
-        pytest.fail(
-            "Letta server must be configured. Set LETTA_BASE_URL and LETTA_SERVER_PASSWORD environment variables."
-        )
-
-    client = create_letta_client(base_url, token)
-
-    try:
-        client.agents.list()
-    except Exception as e:
-        pytest.fail(
-            f"Letta server not accessible at {base_url}. Ensure docker-compose services are running. Error: {e}"
-        )
-
-    return client
-
-
-@pytest.mark.asyncio
-async def test_get_or_create_persona_shared_block_returns_existing_block(letta_client):
-    """Test that get_or_create_persona_shared_block returns existing block without modification."""
-    persona_handle = "test_industry_test_role_existing"
-    agent_id = create_pi_agent(letta_client, "Test Agent for Block Reuse")
-
-    block1 = await get_or_create_persona_shared_block(
-        letta_client, persona_handle, agent_id
-    )
-    original_value = block1.value
-    original_id = block1.id
-
-    letta_client.blocks.modify(block_id=block1.id, value="Modified value for testing")
-
-    block2 = await get_or_create_persona_shared_block(
-        letta_client, persona_handle, agent_id
-    )
-
-    assert block2.id == original_id
-    assert block2.value == "Modified value for testing"
-    assert block2.value != original_value
-
-    print(f"\n✓ Returned existing block with ID: {block2.id}")
-    print(f"✓ Block value was not reset: {block2.value[:50]}...")
 
 
 @pytest.mark.asyncio

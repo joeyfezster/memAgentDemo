@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 
 import pytest
 
@@ -9,34 +8,11 @@ from agent.tools.persona_tools import (
     list_available_personas,
     update_user_persona_profile_in_db,
 )
-from app.core.letta_client import create_letta_client, create_pi_agent
+from app.core.letta_client import create_pi_agent
 from app.crud.persona import get_persona_by_handle
 from app.crud.user import create_user
 from app.db.session import get_session
 from app.models.persona import Persona
-
-
-@pytest.fixture
-def letta_client():
-    """Ensure Letta server is available for tests."""
-    base_url = os.getenv("LETTA_BASE_URL", "http://localhost:8283")
-    token = os.getenv("LETTA_SERVER_PASSWORD")
-
-    if not base_url or not token:
-        pytest.fail(
-            "Letta server must be configured. Set LETTA_BASE_URL and LETTA_SERVER_PASSWORD environment variables."
-        )
-
-    client = create_letta_client(base_url, token)
-
-    try:
-        client.agents.list()
-    except Exception as e:
-        pytest.fail(
-            f"Letta server not accessible at {base_url}. Ensure docker-compose services are running. Error: {e}"
-        )
-
-    return client
 
 
 @pytest.mark.asyncio
@@ -117,6 +93,10 @@ async def test_update_user_persona_profile_associates_with_existing_persona(
         result = update_user_persona_profile_in_db(user.id, persona.persona_handle, 0.9)
         data = json.loads(result)
 
+        print(f"\n{'='*80}")
+        print(f"Tool result: {json.dumps(data, indent=2)}")
+        print(f"{'='*80}\n")
+
         assert data["success"] is True
         assert data["persona_handle"] == persona.persona_handle
         assert data["industry"] == persona.industry
@@ -124,6 +104,8 @@ async def test_update_user_persona_profile_associates_with_existing_persona(
         assert data["confidence_score"] == 0.9
 
         agent_blocks = letta_client.agents.blocks.list(agent_id=agent_id)
+        print(f"\nChecking agent: {agent_id}")
+        print(f"Found {len(agent_blocks)} blocks: {[b.label for b in agent_blocks]}")
         persona_block = next(
             (
                 b
@@ -173,6 +155,10 @@ async def test_update_user_persona_profile_creates_new_persona_with_valid_handle
         assert created_persona.persona_handle == new_handle
 
         agent_blocks = letta_client.agents.blocks.list(agent_id=agent_id)
+        print(f"\nAgent {agent_id} blocks:")
+        for b in agent_blocks:
+            print(f"  - {b.label} (id: {b.id})")
+
         persona_block = next(
             (b for b in agent_blocks if b.label == f"{new_handle}_service_experience"),
             None,
