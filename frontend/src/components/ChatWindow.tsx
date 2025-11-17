@@ -136,7 +136,10 @@ export default function ChatWindow({
           <div>
             <h2 className="chat__title">Welcome back, {user.display_name}</h2>
             <p className="chat__subtitle">
-              Persona handle: {user.persona_handle}
+              Persona handle:{" "}
+              {user.user_personas
+                ?.map((p) => p.persona.persona_handle)
+                .join(", ") || "None"}
             </p>
           </div>
           <button className="chat__logout" type="button" onClick={onLogout}>
@@ -158,7 +161,10 @@ export default function ChatWindow({
         <div>
           <h2 className="chat__title">Welcome back, {user.display_name}</h2>
           <p className="chat__subtitle">
-            Persona handle: {user.persona_handle}
+            Persona handle:{" "}
+            {user.user_personas
+              ?.map((p) => p.persona.persona_handle)
+              .join(", ") || "None"}
           </p>
         </div>
         <button className="chat__logout" type="button" onClick={onLogout}>
