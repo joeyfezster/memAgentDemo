@@ -6,6 +6,15 @@
 - Agents will consider that human code review is a major bottleneck of the development process. strive to write minimal, high-quality code that minimizes the need for human review.
 - This repo uses a local .venv for python dependencies and poetry for dependency management. note also the makefile
 
+## Git Commit Messages
+
+- Follow the structure: `<Component>: <verb> <context>`
+- Examples:
+  - `Docs: add claude docs in md (66 files)`
+  - `API: fix authentication error handling`
+  - `Frontend: update chat component styles`
+  - `Tests: add unit tests for persona CRUD`
+
 ## Code Style
 
 - Avoid writing comments at all costs. If you see comments, refactor the code until they are not needed.
