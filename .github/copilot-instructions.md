@@ -24,6 +24,15 @@
   - `Frontend: update chat component styles`
   - `Tests: add unit tests for persona CRUD`
 
+## Git Commit Messages
+
+- Follow the structure: `<Component>: <verb> <context>`
+- Examples:
+  - `Docs: add claude docs in md (66 files)`
+  - `API: fix authentication error handling`
+  - `Frontend: update chat component styles`
+  - `Tests: add unit tests for persona CRUD`
+
 ## Code Style
 
 - Avoid writing comments at all costs. If you see comments, refactor the code until they are not needed.
