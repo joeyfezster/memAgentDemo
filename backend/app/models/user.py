@@ -11,6 +11,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
+    from app.models.persona import Persona, UserPersona
 
 
 class User(Base):
@@ -24,6 +25,9 @@ class User(Base):
     persona_handle: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(255), nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    letta_agent_id: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -41,4 +45,10 @@ class User(Base):
 
     conversations: Mapped[list[Conversation]] = relationship(
         "Conversation", back_populates="user", cascade="all, delete-orphan"
+    )
+    persona_links: Mapped[list[UserPersona]] = relationship(
+        "UserPersona", back_populates="user", cascade="all, delete-orphan"
+    )
+    personas: Mapped[list[Persona]] = relationship(
+        "Persona", secondary="userpersona", viewonly=True
     )

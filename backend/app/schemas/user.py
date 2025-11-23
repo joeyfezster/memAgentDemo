@@ -13,6 +13,7 @@ class UserBase(BaseModel):
     display_name: str
     persona_handle: str
     role: str | None = None
+    letta_agent_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

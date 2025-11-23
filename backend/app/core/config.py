@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
     persona_seed_password: str = "changeme123"
+    letta_base_url: str | None = None
+    letta_server_password: str | None = None
+    persona_sync_interval_seconds: int = 900
 
 
 @lru_cache
