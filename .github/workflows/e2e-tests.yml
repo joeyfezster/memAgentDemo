@@ -10,12 +10,20 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: mem_env
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Create environment files
+        run: |
+          echo "JWT_SECRET_KEY=test-secret-key-for-ci" > backend/.env
+          echo "PERSONA_SEED_PASSWORD=changeme123" >> backend/.env
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> backend/.env
+          echo "VITE_API_URL=http://localhost:8000" > frontend/.env
 
       - name: Start containers
         run: |
