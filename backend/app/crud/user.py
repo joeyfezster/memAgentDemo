@@ -26,14 +26,12 @@ async def create_user(
     *,
     email: str,
     display_name: str,
-    persona_handle: str,
     role: str | None,
     hashed_password: str,
 ) -> User:
     user = User(
         email=email,
         display_name=display_name,
-        persona_handle=persona_handle,
         role=role,
         hashed_password=hashed_password,
     )

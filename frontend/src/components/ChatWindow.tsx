@@ -135,9 +135,6 @@ export default function ChatWindow({
         <header className="chat__header">
           <div>
             <h2 className="chat__title">Welcome back, {user.display_name}</h2>
-            <p className="chat__subtitle">
-              Persona handle: {user.persona_handle}
-            </p>
           </div>
           <button className="chat__logout" type="button" onClick={onLogout}>
             Log out
@@ -157,9 +154,6 @@ export default function ChatWindow({
       <header className="chat__header">
         <div>
           <h2 className="chat__title">Welcome back, {user.display_name}</h2>
-          <p className="chat__subtitle">
-            Persona handle: {user.persona_handle}
-          </p>
         </div>
         <button className="chat__logout" type="button" onClick={onLogout}>
           Log out

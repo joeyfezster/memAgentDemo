@@ -1,11 +1,24 @@
 # Project General Coding Guidelines
 
+## Agent Memory and Context
+
+- When a user asks you to remember something, update this file to persist that memory.
+- This file serves as the primary source of truth for project-specific guidelines, conventions, and accumulated knowledge.
+
 ## Workflows
 
 - When working on a feature or bugfix, create your work plan and keep it in a local markdown file to track your progress as a todo list. Track implicit decisions you make along the way in this file. The file should be titled by the name of the feature or bugfix you are working on. Put these in /docs/agentic_work/.
 - Agents will consider that human code review is a major bottleneck of the development process. strive to write minimal, high-quality code that minimizes the need for human review.
 - This repo uses a local .venv for python dependencies and pip for dependency management.
 - The project uses a Makefile to streamline common tasks. bootstrap is meant to ensure the system is ready to go, make up should be an idempotent and complete operation to start all the containers needed for local development.
+
+### Docker and Container Management
+
+- Use `make up-detached` to start services in the background (detached mode). This prevents the terminal from being blocked.
+- `make up` runs in the foreground and keeps the terminal open - any further commands in that terminal will interrupt the running containers.
+- The docker-compose.yml includes a `db-init` service that ensures database migrations and seeding happen idempotently before the backend starts.
+- Database initialization (migrations + seeding) is handled by `backend/db_init.py` which runs once when containers start.
+- To completely reset the database: `make down && docker volume rm infra_postgres_data && make up-detached`
 
 ### Alembic Migrations
 
@@ -18,6 +31,12 @@
 - Agents are not to use git, unless explicitly instructed to do so by a human operator.
 - Note there are linters and pre-commit hooks set up to ensure code quality and style. These will run automatically on git commit.
 - Linter-edited files must be re-staged before committing.
+
+### Checking PR CI Status
+
+- Use `gh pr checks <PR_NUMBER> --watch` in background mode to monitor CI checks in real-time
+- For viewing logs without pager issues, pipe commands through `cat` or `less`: `gh run view <RUN_ID> --log-failed | cat`
+- To get the latest failed run logs: `gh run list --branch <BRANCH> --limit 1 --json databaseId --jq '.[0].databaseId' | xargs -I {} gh run view {} --log-failed | cat`
 
 ### Git Commit Messages
 
@@ -58,7 +77,8 @@
 ## Running Commands
 
 - This project has a virtual environment located at `.venv/`.
-- Activate the virtual environment in a standalone command that can be auto-approved: `source .venv/bin/activate`
+- **IMPORTANT**: Activate the virtual environment in a standalone command that can be auto-approved: `source .venv/bin/activate`
+- This activation command must be run separately, not chained with other commands.
 - Only activate the virtual environment when the terminal complains that python is not found.
 
 ## Earned Experience
