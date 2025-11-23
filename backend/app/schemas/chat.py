@@ -24,6 +24,16 @@ class MessageSchema(BaseModel):
     content: str
     created_at: datetime
 
+    @classmethod
+    def from_dict(cls, conversation_id: str, message_dict: dict) -> MessageSchema:
+        return cls(
+            conversation_id=conversation_id,
+            id=message_dict["id"],
+            role=MessageRole(message_dict["role"]),
+            content=message_dict["content"],
+            created_at=message_dict["created_at"],
+        )
+
 
 class ConversationSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     persona_seed_password: str = "changeme123"
     anthropic_api_key: str
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimension: int = 1536
 
 
 @lru_cache
