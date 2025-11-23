@@ -104,6 +104,7 @@ beforeAll(async () => {
       DATABASE_URL: `sqlite+aiosqlite:///${databasePath}`,
       JWT_SECRET_KEY: "frontend-test-secret",
       PERSONA_SEED_PASSWORD: "test-password",
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "test-key-not-set",
     },
     stdio: ["ignore", "inherit", "inherit"],
     detached: false,

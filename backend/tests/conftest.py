@@ -26,8 +26,10 @@ def configure_test_environment(tmp_path_factory: pytest.TempPathFactory) -> None
     os.environ["PERSONA_SEED_PASSWORD"] = "changeme123"
 
     if "ANTHROPIC_API_KEY" not in os.environ:
-        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-        if not anthropic_key:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+        if "ANTHROPIC_API_KEY" not in os.environ:
             raise ValueError(
                 "ANTHROPIC_API_KEY environment variable is required for tests. "
                 "Please set it in your .env file or environment."
