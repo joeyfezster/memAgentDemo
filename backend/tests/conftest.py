@@ -23,7 +23,18 @@ def configure_test_environment(tmp_path_factory: pytest.TempPathFactory) -> None
     db_path = db_dir / "test.db"
     os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path}"
     os.environ["JWT_SECRET_KEY"] = "test-secret-key"
-    os.environ["PERSONA_SEED_PASSWORD"] = "test-password"
+    os.environ["PERSONA_SEED_PASSWORD"] = "changeme123"
+
+    if "ANTHROPIC_API_KEY" not in os.environ:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+        if "ANTHROPIC_API_KEY" not in os.environ:
+            raise ValueError(
+                "ANTHROPIC_API_KEY environment variable is required for tests. "
+                "Please set it in your .env file or environment."
+            )
+
     get_settings.cache_clear()
     init_engine()
 

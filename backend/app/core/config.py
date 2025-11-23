@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
     persona_seed_password: str = "changeme123"
+    anthropic_api_key: str
 
 
 @lru_cache

@@ -190,7 +190,7 @@ export default function ChatWindow({
           name="message"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Type your prompt here..."
+          placeholder="Type your message here..."
           rows={3}
           required
         />

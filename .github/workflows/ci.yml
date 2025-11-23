@@ -9,6 +9,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    environment: mem_env
     strategy:
       fail-fast: false
       matrix:
@@ -26,6 +27,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+      - name: Create backend .env file
+        if: matrix.service == 'backend'
+        working-directory: backend
+        run: |
+          echo "JWT_SECRET_KEY=test-secret-key-for-ci" > .env
+          echo "PERSONA_SEED_PASSWORD=changeme123" >> .env
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
       - name: Run backend tests
         if: matrix.service == 'backend'
         working-directory: backend
@@ -53,6 +61,18 @@ jobs:
         if: matrix.service == 'frontend'
         working-directory: frontend
         run: pnpm install --frozen-lockfile
+      - name: Create backend .env file for frontend tests
+        if: matrix.service == 'frontend'
+        working-directory: backend
+        run: |
+          echo "JWT_SECRET_KEY=test-secret-key-for-ci" > .env
+          echo "PERSONA_SEED_PASSWORD=changeme123" >> .env
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
+      - name: Create frontend .env file
+        if: matrix.service == 'frontend'
+        working-directory: frontend
+        run: |
+          echo "VITE_API_URL=http://localhost:8000" > .env
       - name: Run frontend tests
         if: matrix.service == 'frontend'
         working-directory: frontend

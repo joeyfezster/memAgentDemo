@@ -25,19 +25,9 @@
 1. React with Vite for frontend for fast development and modern tooling
 1. PostgreSQL as the database for reliability and robustness
 1. Docker and Docker Compose for containerization and easy local setup
-1. Poetry for Python dependency management to ensure reproducible environments [regretting this somewhat]
-1. letta for memory-enabled ai agents, but this choice is not recommended for prod. an understanding of the existing architecture is needed before making a concrete go-forward recommendation
-
-### Letta Vs Mem0
-
-1. While Mem0 is stated to be more production-ready, Letta is genuinely open-source and is much easier to self-host and modify. Chosen for this demo project for that reason.
-1. Letta has ~20K stars and 150 contributors on GitHub, with a vibrant recent commit history, though only two merged PRs in the past month.
-1. Letta does not have the concept of 'threads' or 'conversations' they believe all agent interactions should be part of the persistent memory.
-   - my initial reaction is to profoundly disagree with this, as short-term-memory can be useful for ensuring the agent is focused on the current task, and reduces the potential noise from unrelated past interactions
-
-### Memory Visualization
-
-1. it is important to me that i can show the memory contents to the assessors of this task, so they may better understand how the memory system works and changes with user interactions
+1. Pip for Python dependency management
+1. Anthropic's Claude 3 as the LLM for its capabilities and alignment features
+1. Bare bones orchestration layer without agent frameworks
 
 ### AI Interaction Guardrails
 
@@ -53,18 +43,16 @@
 
 ### Agent Model
 
-1. This solution uses a single agent per user model. While this simplifies implementation and context continuity, it makes task-specialization more difficult. 'learned expertise' gets cluttered as the single agent has to retain the expertise across multiple tasks across multiple users. Task-specialized agents remove one complexity axis (task type).
-1. In addition, task-specialized agents can have more focused toolsets, and prompt engineering, leading to better performance per task and reduced latency.
-1. The current implementation of the shared 'persona_service_experience' memory blocks is less-than-scalable has a race condition. Users may be associated with more personas than there is space inthe context window. Also, if two users of the same persona type use the agent simultaneously, they may overwrite each other's shared memory. A more robust implementation would use a versioned or append-only log structure for shared memories. Best to implement this through a shared archive or RAG service.
+1.
 
 ### Governance
 
-1. Add a periodic cleanup job to remove PII from cross-user shared memory blocks
+1. Add a tool permission management aspect to the agent model.
+1. Token budgets and cost tracking per user/agent.
 
 ### Data Model
 
-1. User taxonomy - having defined personas is great, but the `user_profile` block can be leveraged to discover new types of users over time. This will require a periodic discovery/review job.
-1. shared object model between front and backend (e.g. User, Conversation, Message, etc) to reduce duplication and potential drift
+1.
 
 ### CI
 
