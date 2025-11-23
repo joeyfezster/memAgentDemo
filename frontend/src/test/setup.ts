@@ -1,11 +1,28 @@
 import "@testing-library/jest-dom/vitest";
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { afterAll, beforeAll } from "vitest";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { request } from "node:http";
+
+function loadEnvFile(filePath: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  if (!existsSync(filePath)) {
+    return env;
+  }
+  const content = readFileSync(filePath, "utf-8");
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const [key, ...valueParts] = trimmed.split("=");
+    if (key && valueParts.length > 0) {
+      env[key.trim()] = valueParts.join("=").trim();
+    }
+  }
+  return env;
+}
 
 const localStorageImpl = (() => {
   let store: Record<string, string> = {};
@@ -93,6 +110,9 @@ beforeAll(async () => {
     `http://127.0.0.1:${TEST_PORT}`;
 
   const backendDir = path.resolve(__dirname, "../../../backend");
+  const backendEnvPath = path.join(backendDir, ".env");
+  const backendEnv = loadEnvFile(backendEnvPath);
+
   const { command, args } = findUvicorn();
   databasePath = path.join(backendDir, "frontend-test.db");
   await fs.rm(databasePath, { force: true });
@@ -101,10 +121,10 @@ beforeAll(async () => {
     cwd: backendDir,
     env: {
       ...process.env,
+      ...backendEnv,
       DATABASE_URL: `sqlite+aiosqlite:///${databasePath}`,
       JWT_SECRET_KEY: "frontend-test-secret",
       PERSONA_SEED_PASSWORD: "test-password",
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "test-key-not-set",
     },
     stdio: ["ignore", "inherit", "inherit"],
     detached: false,

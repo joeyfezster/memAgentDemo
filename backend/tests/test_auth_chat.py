@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from app.main import app
 
 TEST_EMAIL = "daniel.insights@goldtobacco.com"
-TEST_PASSWORD = "test-password"
+TEST_PASSWORD = "changeme123"
 
 
 @pytest.mark.asyncio
