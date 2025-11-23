@@ -51,24 +51,5 @@ services:
       - /app/node_modules
     command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5173"]
 
-  letta:
-    image: letta/letta:latest
-    container_name: memagent_letta
-    restart: unless-stopped
-    env_file:
-      - ../backend/.env
-    environment:
-      LETTA_PG_URI: postgresql://postgres:postgres@postgres:5432/memagent
-      LETTA_SERVER_PASSWORD: ${LETTA_SERVER_PASSWORD:-changeme}
-      SECURE: ${LETTA_SECURE:-false}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8283:8283"
-    volumes:
-      - letta_data:/root/.letta
-
 volumes:
   postgres_data:
-  letta_data:
