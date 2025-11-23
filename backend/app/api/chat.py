@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.config import get_settings
 from app.crud import conversation as conversation_crud
 from app.crud import message as message_crud
 from app.db.session import get_session
@@ -22,6 +23,7 @@ from app.schemas.chat import (
     SendMessageRequest,
     SendMessageResponse,
 )
+from app.services.agent_service import AgentService
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -108,7 +110,11 @@ async def send_message_to_conversation(
         content=payload.content,
     )
 
-    assistant_reply = f"hi {current_user.display_name}"
+    settings = get_settings()
+    agent_service = AgentService(settings)
+    assistant_reply = await agent_service.generate_response(
+        conversation_id, payload.content, current_user, session
+    )
     assistant_message = await message_crud.create_message(
         session,
         conversation_id=conversation_id,
