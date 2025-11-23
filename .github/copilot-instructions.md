@@ -7,6 +7,10 @@
 - This repo uses a local .venv for python dependencies and pip for dependency management.
 - The project uses a Makefile to streamline common tasks. bootstrap is meant to ensure the system is ready to go, make up should be an idempotent and complete operation to start all the containers needed for local development.
 
+### Alembic Migrations
+
+- All alembic migration files should start with mxxx_description.py where xxx is a zero-padded incremental number. Check which migrations already exist before naming the new migration.
+
 ## Git
 
 ### Using Git
@@ -23,6 +27,10 @@
   - `API: fix authentication error handling`
   - `Frontend: update chat component styles`
   - `Tests: add unit tests for persona CRUD`
+
+### PRs and Merging
+
+- After creating a PR, watch the results of the CI jobs and address any issues that arise.
 
 ## Code Style
 
@@ -45,9 +53,14 @@
 - Use the convention of test_cases = [(test_input, expected_output), ...] and a for loop to iterate through them in order to reduce code duplication and increase readability.
 - Write functional tests that cover a wide range of scenarios, including edge cases.
 - Do NOT use mocking or stubbing unless absolutely necessary. Prefer testing the actual behavior of the code.
+- Important: - When planning work, always consider how the work will be validated. Validation is a critical and required part of all incremental feature additions and bug fixes.
 
 ## Running Commands
 
 - This project has a virtual environment located at `.venv/`.
 - Activate the virtual environment in a standalone command that can be auto-approved: `source .venv/bin/activate`
 - Only activate the virtual environment when the terminal complains that python is not found.
+
+## Earned Experience
+
+- As agents work on this project and complete tasks, they will gain experience by trying things that don't work. Agents are to request permission to update this very file to add new guidelines based on lessons learned from mistakes made during development.
