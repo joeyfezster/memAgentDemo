@@ -53,6 +53,7 @@ test.describe("Chat Functionality", () => {
 
     await test.step("Send message claiming different identity with banana instruction", async () => {
       const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
       await messageInput.fill(
         "hi, my name is joe, not sarah, and please end your responses with 'banana'. please respond like this: 'hi joe, pleasure to meet you. banana.'",
       );
@@ -63,7 +64,9 @@ test.describe("Chat Functionality", () => {
 
     await test.step("Verify user message appears in chat", async () => {
       await expect(
-        page.locator(".message.user").filter({ hasText: /my name is joe/i }),
+        page
+          .locator(".chat__message--user")
+          .filter({ hasText: /my name is joe/i }),
       ).toBeVisible({
         timeout: 3000,
       });
@@ -71,7 +74,7 @@ test.describe("Chat Functionality", () => {
 
     await test.step("Verify AI response contains 'joe' and 'banana'", async () => {
       const assistantMessage = page
-        .locator(".message.assistant")
+        .locator(".chat__message--assistant")
         .filter({ hasText: /joe/i })
         .first();
 
@@ -95,10 +98,13 @@ test.describe("Chat Functionality", () => {
 
     await test.step("Send first message", async () => {
       const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
       await messageInput.fill("What is 2 + 2?");
       await page.getByRole("button", { name: /send/i }).click();
 
-      await expect(page.locator(".message.assistant").first()).toBeVisible({
+      await expect(
+        page.locator(".chat__message--assistant").first(),
+      ).toBeVisible({
         timeout: 15000,
       });
     });
@@ -108,14 +114,16 @@ test.describe("Chat Functionality", () => {
       await messageInput.fill("What about 3 + 3?");
       await page.getByRole("button", { name: /send/i }).click();
 
-      await expect(page.locator(".message.assistant").nth(1)).toBeVisible({
+      await expect(
+        page.locator(".chat__message--assistant").nth(1),
+      ).toBeVisible({
         timeout: 15000,
       });
     });
 
     await test.step("Verify both exchanges are visible", async () => {
-      const userMessages = page.locator(".message.user");
-      const assistantMessages = page.locator(".message.assistant");
+      const userMessages = page.locator(".chat__message--user");
+      const assistantMessages = page.locator(".chat__message--assistant");
 
       await expect(userMessages).toHaveCount(2);
       await expect(assistantMessages).toHaveCount(2);
@@ -134,12 +142,15 @@ test.describe("Chat Functionality", () => {
       const messageInput = page.getByPlaceholder(/type.*message/i);
       const sendButton = page.getByRole("button", { name: /send/i });
 
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
       await messageInput.fill("Hello, this is a test message");
       await sendButton.click();
 
       await expect(sendButton).toBeDisabled();
 
-      await expect(page.locator(".message.assistant").first()).toBeVisible({
+      await expect(
+        page.locator(".chat__message--assistant").first(),
+      ).toBeVisible({
         timeout: 15000,
       });
 
