@@ -26,11 +26,11 @@ Before running `make bootstrap`, ensure you have the following installed on your
 
 This will:
 
-- Install pip, pre-commit, and poetry in your virtualenv
+- Install pip and pre-commit in your virtualenv
 - Configure pre-commit hooks
 - Enable corepack for pnpm management
 - Create `.env` files from templates
-- Install backend Python dependencies via Poetry
+- Install backend Python dependencies via pip
 - Install frontend Node dependencies via pnpm
 
 ## Repository layout
@@ -49,7 +49,7 @@ A running checklist for the scaffolding effort lives in `repo_scaffolding_build.
 
 ```bash
 make bootstrap   # install tooling and create local env files
-make up          # build and start services (frontend, backend, postgres, letta)
+make up          # build and start services (frontend, backend, postgres)
 make down        # stop services
 ```
 
@@ -70,10 +70,5 @@ make format      # execute pre-commit hooks across the repo
 ## Deployment notes
 
 - Dockerfiles are included for both services. The frontend image exposes a production `nginx` stage while the dev profile is used via Docker Compose.
-- `infra/docker-compose.yml` orchestrates the local stack and includes a letta agent stub container behind an optional profile (`agents`).
+- `infra/docker-compose.yml` orchestrates the local stack.
 - GitHub Actions workflow (`.github/workflows/ci.yml`) runs pre-commit, lint, tests, and container build smoke checks on every push/PR.
-
-## Next steps
-
-- Flesh out shared libraries under `common/` as cross-cutting functionality emerges.
-- Implement authentication, chatbot UI, and memory-backed services on top of this scaffold.
