@@ -22,7 +22,6 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), primary_key=True),
         sa.Column("email", sa.String(length=255), nullable=False, unique=True),
         sa.Column("display_name", sa.String(length=255), nullable=False),
-        sa.Column("persona_handle", sa.String(length=255), nullable=False),
         sa.Column("role", sa.String(length=255), nullable=True),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
         sa.Column(

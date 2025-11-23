@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import api_router
 from app.core.config import get_settings
 from app.db.base import Base
-from app.db.seed import seed_personas
+from app.db.seed import seed_user_profiles
 from app.db.session import get_engine, get_session_factory
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await conn.run_sync(Base.metadata.create_all)
         session_factory = get_session_factory()
         async with session_factory() as session:
-            await seed_personas(session)
+            await seed_user_profiles(session)
     except Exception as exc:
         logger.error("Database connection failed", exc_info=exc)
     yield

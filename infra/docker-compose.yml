@@ -1,7 +1,8 @@
+name: memagentdemo
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: memagent_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: memagent
@@ -9,14 +10,27 @@ services:
       POSTGRES_USER: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres && psql -U postgres -d memagent -tAc \"SELECT 1 FROM pg_extension WHERE extname = 'vector'\" | grep -q 1 || psql -U postgres -d memagent -c 'CREATE EXTENSION IF NOT EXISTS vector'"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  db-init:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/memagent
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+    entrypoint: ["python", "db_init.py"]
+    command: []
 
   backend:
     build:
@@ -27,7 +41,10 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/memagent
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     volumes:
@@ -43,7 +60,8 @@ services:
     env_file:
       - ../frontend/.env
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "5173:5173"
     volumes:

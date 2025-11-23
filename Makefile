@@ -8,7 +8,7 @@ PYTHON := $(VENV_PATH)/bin/python
 PIP := $(VENV_PATH)/bin/pip
 PRECOMMIT := $(ROOT_DIR)/$(VENV_PATH)/bin/pre-commit
 
-.PHONY: bootstrap activate up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
+.PHONY: bootstrap activate up up-detached down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
 
 bootstrap:
 	@if [ ! -d "$(VENV_PATH)" ]; then \
@@ -43,6 +43,9 @@ activate:
 
 up:
 	$(DOCKER_COMPOSE) up --build
+
+up-detached:
+	$(DOCKER_COMPOSE) up --build -d
 
 down:
 	$(DOCKER_COMPOSE) down --remove-orphans

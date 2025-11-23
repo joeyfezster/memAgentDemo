@@ -21,7 +21,6 @@ class User(Base):
         String(255), unique=True, nullable=False, index=True
     )
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    persona_handle: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(255), nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
