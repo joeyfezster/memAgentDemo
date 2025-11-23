@@ -14,7 +14,7 @@ from app.db.base import Base
 class MessageRole(str, enum.Enum):
     USER = "user"
     SYSTEM = "system"
-    AGENT = "_agent"
+    AGENT = "assistant"
 
 
 if TYPE_CHECKING:
