@@ -32,6 +32,12 @@
 - Note there are linters and pre-commit hooks set up to ensure code quality and style. These will run automatically on git commit.
 - Linter-edited files must be re-staged before committing.
 
+### Checking PR CI Status
+
+- Use `gh pr checks <PR_NUMBER> --watch` in background mode to monitor CI checks in real-time
+- For viewing logs without pager issues, pipe commands through `cat` or `less`: `gh run view <RUN_ID> --log-failed | cat`
+- To get the latest failed run logs: `gh run list --branch <BRANCH> --limit 1 --json databaseId --jq '.[0].databaseId' | xargs -I {} gh run view {} --log-failed | cat`
+
 ### Git Commit Messages
 
 - Follow the structure: `<Component>: <verb> <context>`
