@@ -61,16 +61,8 @@ function findUvicorn(): { command: string; args: string[] } {
     };
   }
   return {
-    command: "poetry",
-    args: [
-      "run",
-      "uvicorn",
-      "app.main:app",
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(TEST_PORT),
-    ],
+    command: "uvicorn",
+    args: ["app.main:app", "--host", "127.0.0.1", "--port", String(TEST_PORT)],
   };
 }
 
