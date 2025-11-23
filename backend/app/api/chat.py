@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import datetime
+import json
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -10,7 +14,7 @@ from app.core.config import get_settings
 from app.crud import conversation as conversation_crud
 from app.crud import message as message_crud
 from app.db.session import get_session
-from app.models.message import MessageRole
+from app.models.message import Message, MessageRole
 from app.models.user import User
 from app.schemas.chat import (
     ChatMessage,
@@ -122,17 +126,102 @@ async def send_message_to_conversation(
         content=assistant_reply,
     )
 
-    message_count = await message_crud.get_message_count(session, conversation_id)
-    if message_count == 2 and not conversation.title:
-        words = payload.content.split()[:4]
-        title_prefix = " ".join(words)
-        timestamp = datetime.now().strftime("%d-%m:%H:%M")
-        title = f"{title_prefix} {timestamp}"
-        await conversation_crud.update_conversation_title(
-            session, conversation_id, title
-        )
+    await _ensure_conversation_title(
+        session, conversation_id, current_user.id, payload.content
+    )
 
     return SendMessageResponse(
         user_message=MessageSchema.model_validate(user_message),
         assistant_message=MessageSchema.model_validate(assistant_message),
     )
+
+
+@router.post("/conversations/{conversation_id}/messages/stream")
+async def stream_message_to_conversation(
+    conversation_id: str,
+    payload: SendMessageRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    conversation = await conversation_crud.get_conversation_by_id(
+        session, conversation_id, current_user.id
+    )
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+        )
+
+    user_message = await message_crud.create_message(
+        session,
+        conversation_id=conversation_id,
+        role=MessageRole.USER,
+        content=payload.content,
+    )
+
+    settings = get_settings()
+    agent_service = AgentService(settings)
+
+    async def event_stream() -> AsyncIterator[str]:
+        yield _format_sse(
+            {"type": "user_message", "message": _serialize_message(user_message)}
+        )
+
+        assistant_chunks: list[str] = []
+        async for chunk in agent_service.stream_response(
+            conversation_id, payload.content, current_user, session
+        ):
+            assistant_chunks.append(chunk)
+            yield _format_sse({"type": "chunk", "content": chunk})
+
+        assistant_message = await message_crud.create_message(
+            session,
+            conversation_id=conversation_id,
+            role=MessageRole.AGENT,
+            content="".join(assistant_chunks),
+        )
+
+        await _ensure_conversation_title(
+            session, conversation_id, current_user.id, payload.content
+        )
+
+        yield _format_sse(
+            {
+                "type": "assistant_message",
+                "message": _serialize_message(assistant_message),
+            }
+        )
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+async def _ensure_conversation_title(
+    session: AsyncSession, conversation_id: str, user_id: str, user_content: str
+) -> None:
+    conversation = await conversation_crud.get_conversation_by_id(
+        session, conversation_id, user_id
+    )
+    if not conversation:
+        return
+
+    message_count = await message_crud.get_message_count(session, conversation_id)
+    if message_count != 2 or conversation.title:
+        return
+
+    words = user_content.split()[:4]
+    title_prefix = " ".join(words)
+    timestamp = datetime.now().strftime("%d-%m:%H:%M")
+    title = f"{title_prefix} {timestamp}"
+    await conversation_crud.update_conversation_title(session, conversation_id, title)
+
+
+def _serialize_message(message: Message) -> dict[str, Any]:
+    return MessageSchema.model_validate(message).model_dump()
+
+
+def _format_sse(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload)}\n\n"

@@ -157,4 +157,36 @@ test.describe("Chat Functionality", () => {
       await expect(sendButton).toBeEnabled();
     });
   });
+
+  test("should stream assistant responses chunk by chunk", async ({ page }) => {
+    await page.locator(".new-chat-button").click();
+    await page.waitForTimeout(500);
+
+    const messageInput = page.getByPlaceholder(/type.*message/i);
+    await expect(messageInput).toBeEditable({ timeout: 10000 });
+    await messageInput.fill(
+      "Describe the benefits of streaming responses for user experience in a couple sentences.",
+    );
+
+    const sendButton = page.getByRole("button", { name: /send/i });
+    await sendButton.click();
+
+    const assistantMessage = page.locator(".chat__message--assistant").first();
+
+    await expect(assistantMessage).toHaveAttribute("data-streaming", "true", {
+      timeout: 15000,
+    });
+
+    const startingLength =
+      (await assistantMessage.textContent())?.length ?? 0;
+
+    await expect.poll(async () => {
+      const currentLength = (await assistantMessage.textContent())?.length ?? 0;
+      return currentLength;
+    }, { timeout: 15000 }).toBeGreaterThan(startingLength);
+
+    await expect(assistantMessage).toHaveAttribute("data-streaming", "false", {
+      timeout: 15000,
+    });
+  });
 });

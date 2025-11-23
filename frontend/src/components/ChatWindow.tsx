@@ -2,8 +2,9 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import {
   getConversationMessages,
-  sendMessageToConversation,
+  streamMessageToConversation,
   type Message,
+  type StreamedChatEvent,
   type User,
 } from "../api/client";
 
@@ -11,6 +12,7 @@ type ChatMessage = {
   id: string;
   sender: "user" | "assistant";
   text: string;
+  streaming?: boolean;
 };
 
 type ChatWindowProps = {
@@ -52,6 +54,7 @@ export default function ChatWindow({
             id: msg.id,
             sender: msg.role as "user" | "assistant",
             text: msg.content,
+            streaming: false,
           }),
         );
         setMessages(chatMessages);
@@ -85,45 +88,79 @@ export default function ChatWindow({
 
     const userMessageText = input;
     const tempId = `temp-${Date.now()}`;
+    const assistantTempId = `assistant-${Date.now()}`;
     const userMessage: ChatMessage = {
       id: tempId,
       sender: "user",
       text: userMessageText,
+      streaming: false,
     };
 
-    setMessages((current) => [...current, userMessage]);
+    const assistantPlaceholder: ChatMessage = {
+      id: assistantTempId,
+      sender: "assistant",
+      text: "",
+      streaming: true,
+    };
+
+    setMessages((current) => [...current, userMessage, assistantPlaceholder]);
     setInput("");
     setError(null);
     setIsSending(true);
 
     try {
-      const response = await sendMessageToConversation(
+      await streamMessageToConversation(
         token,
         conversationId,
         userMessageText,
-      );
+        (event: StreamedChatEvent) => {
+          if (event.type === "user_message") {
+            setMessages((current) =>
+              current.map((msg) =>
+                msg.id === tempId
+                  ? { ...msg, id: event.message.id, text: event.message.content }
+                  : msg,
+              ),
+            );
+            return;
+          }
 
-      setMessages((current) => {
-        const withoutTemp = current.filter((msg) => msg.id !== tempId);
-        return [
-          ...withoutTemp,
-          {
-            id: response.user_message.id,
-            sender: "user",
-            text: response.user_message.content,
-          },
-          {
-            id: response.assistant_message.id,
-            sender: "assistant",
-            text: response.assistant_message.content,
-          },
-        ];
-      });
+          if (event.type === "chunk") {
+            setMessages((current) =>
+              current.map((msg) =>
+                msg.id === assistantTempId
+                  ? { ...msg, text: `${msg.text}${event.content}` }
+                  : msg,
+              ),
+            );
+            return;
+          }
+
+          if (event.type === "assistant_message") {
+            setMessages((current) =>
+              current.map((msg) =>
+                msg.id === assistantTempId
+                  ? {
+                      id: event.message.id,
+                      sender: "assistant",
+                      text: event.message.content,
+                      streaming: false,
+                    }
+                  : msg,
+              ),
+            );
+          }
+        },
+      );
     } catch (chatError) {
       const message =
         chatError instanceof Error ? chatError.message : "Something went wrong";
       setError(message);
-      setMessages((current) => current.filter((msg) => msg.id !== tempId));
+      setMessages((current) =>
+        current.filter(
+          (msg) => msg.id !== tempId && msg.id !== assistantTempId,
+        ),
+      );
     } finally {
       setIsSending(false);
     }
@@ -172,6 +209,7 @@ export default function ChatWindow({
             <div
               key={message.id}
               className={`chat__message chat__message--${message.sender}`}
+              data-streaming={message.streaming ? "true" : "false"}
             >
               <span className="chat__message-label">
                 {message.sender === "user" ? user.display_name : "Assistant"}
