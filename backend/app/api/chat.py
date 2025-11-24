@@ -227,7 +227,7 @@ async def _ensure_conversation_title(
 
 
 def _serialize_message(message: MessageSchema) -> dict[str, Any]:
-    return message.model_dump()
+    return message.model_dump(mode="json")
 
 
 def _format_sse(payload: dict[str, Any]) -> str:

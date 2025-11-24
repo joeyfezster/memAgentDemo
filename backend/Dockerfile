@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev curl && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev curl postgresql && \
     rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt backend/requirements-dev.txt ./
@@ -18,6 +18,9 @@ COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
 COPY backend/db_init.py ./db_init.py
 COPY docs /docs
+
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8000
 
