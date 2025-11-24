@@ -122,6 +122,7 @@ export default function ChatWindow({
                       ...msg,
                       id: event.message.id,
                       text: event.message.content,
+                      streaming: false,
                     }
                   : msg,
               ),
@@ -133,7 +134,11 @@ export default function ChatWindow({
             setMessages((current) =>
               current.map((msg) =>
                 msg.id === assistantTempId
-                  ? { ...msg, text: `${msg.text}${event.content}` }
+                  ? {
+                      ...msg,
+                      text: `${msg.text}${event.content}`,
+                      streaming: true,
+                    }
                   : msg,
               ),
             );
