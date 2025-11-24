@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from alembic.config import Config
 from alembic.command import upgrade
-from app.db.session import get_session_factory
+from app.db.session import get_session_factory, init_engine
 from app.db.seed import seed_user_profiles
 from asyncpg.exceptions import UndefinedTableError
 from sqlalchemy.exc import ProgrammingError
@@ -38,7 +38,10 @@ async def nuke_database() -> bool:
             print("✓ Database nuked (all data deleted)")
         return True
     except ProgrammingError as e:
-        if isinstance(e.orig, UndefinedTableError):
+        if isinstance(e.orig, UndefinedTableError) or (
+            hasattr(e.orig, "__cause__")
+            and isinstance(e.orig.__cause__, UndefinedTableError)
+        ):
             print(
                 "✓ Database is empty (tables don't exist yet, will be created by migrations)"
             )
@@ -77,7 +80,10 @@ async def run_seeding() -> bool:
         print("✓ Seeding completed successfully")
         return True
     except ProgrammingError as e:
-        if isinstance(e.orig, UndefinedTableError):
+        if isinstance(e.orig, UndefinedTableError) or (
+            hasattr(e.orig, "__cause__")
+            and isinstance(e.orig.__cause__, UndefinedTableError)
+        ):
             print(
                 "✗ Error during seeding: Tables don't exist. Migrations may have failed.",
                 file=sys.stderr,
@@ -98,23 +104,19 @@ def run_initialization() -> int:
         print("✗ DATABASE_URL environment variable not set", file=sys.stderr)
         return 1
 
-    async def nuke_and_seed_with_migrations():
+    try:
         # Nuke
-        if not await nuke_database():
-            return False
+        init_engine()
+        if not asyncio.run(nuke_database()):
+            return 1
 
         # Migrations (run synchronously in between)
         if not run_migrations(database_url):
-            return False
+            return 1
 
         # Seed
-        if not await run_seeding():
-            return False
-
-        return True
-
-    try:
-        if not asyncio.run(nuke_and_seed_with_migrations()):
+        init_engine()
+        if not asyncio.run(run_seeding()):
             return 1
     except Exception as e:
         print(f"✗ Error during initialization: {e}", file=sys.stderr)
