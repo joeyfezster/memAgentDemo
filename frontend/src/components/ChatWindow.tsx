@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import React, { type FormEvent, useEffect, useState } from "react";
 
 import {
   getConversationMessages,
@@ -6,11 +6,13 @@ import {
   type Message,
   type User,
 } from "../api/client";
+import { ToolInteraction } from "./ToolInteraction";
 
 type ChatMessage = {
   id: string;
   sender: "user" | "assistant";
   text: string;
+  tool_metadata?: Message["tool_metadata"];
 };
 
 type ChatWindowProps = {
@@ -52,6 +54,7 @@ export default function ChatWindow({
             id: msg.id,
             sender: msg.role as "user" | "assistant",
             text: msg.content,
+            tool_metadata: msg.tool_metadata,
           }),
         );
         setMessages(chatMessages);
@@ -85,13 +88,14 @@ export default function ChatWindow({
 
     const userMessageText = input;
     const tempId = `temp-${Date.now()}`;
-    const userMessage: ChatMessage = {
+    const optimisticMessage: ChatMessage = {
       id: tempId,
       sender: "user",
       text: userMessageText,
+      tool_metadata: null,
     };
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [...current, optimisticMessage]);
     setInput("");
     setError(null);
     setIsSending(true);
@@ -111,11 +115,13 @@ export default function ChatWindow({
             id: response.user_message.id,
             sender: "user",
             text: response.user_message.content,
+            tool_metadata: response.user_message.tool_metadata,
           },
           {
             id: response.assistant_message.id,
             sender: "assistant",
             text: response.assistant_message.content,
+            tool_metadata: response.assistant_message.tool_metadata,
           },
         ];
       });
@@ -168,18 +174,37 @@ export default function ChatWindow({
           </p>
         )}
         {!isLoading &&
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`chat__message chat__message--${message.sender}`}
-              data-testid="message"
-              data-role={message.sender}
-            >
-              <span className="chat__message-label">
-                {message.sender === "user" ? user.display_name : "Assistant"}
-              </span>
-              <p>{message.text}</p>
-            </div>
+          messages.map((message, index) => (
+            <React.Fragment key={message.id}>
+              <div
+                className={`chat__message chat__message--${message.sender}`}
+                data-testid="message"
+                data-role={message.sender}
+              >
+                <span className="chat__message-label">
+                  {message.sender === "user" ? user.display_name : "Assistant"}
+                </span>
+                <p className="chat__message-text">{message.text}</p>
+              </div>
+
+              {/* Render tool interactions after the user message that triggered them */}
+              {message.sender === "user" &&
+                index + 1 < messages.length &&
+                messages[index + 1].tool_metadata?.tool_interactions &&
+                (messages[index + 1].tool_metadata?.tool_interactions?.length ??
+                  0) > 0 && (
+                  <div
+                    className="tool-interactions"
+                    key={`tools-${message.id}`}
+                  >
+                    {messages[index + 1].tool_metadata?.tool_interactions?.map(
+                      (interaction, idx) => (
+                        <ToolInteraction key={idx} interaction={interaction} />
+                      ),
+                    )}
+                  </div>
+                )}
+            </React.Fragment>
           ))}
       </div>
 

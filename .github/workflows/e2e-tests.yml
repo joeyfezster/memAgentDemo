@@ -27,7 +27,7 @@ jobs:
 
       - name: Start containers
         run: |
-          docker compose -f infra/docker-compose.yml up -d --wait
+          docker compose -p memagentdemo -f infra/docker-compose.yml up -d --wait
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,16 +58,16 @@ jobs:
 
       - name: Show db-init logs on failure
         if: failure()
-        run: docker compose -f infra/docker-compose.yml logs db-init
+        run: docker compose -p memagentdemo -f infra/docker-compose.yml logs db-init
 
       - name: Show backend logs on failure
         if: failure()
-        run: docker compose -f infra/docker-compose.yml logs backend
+        run: docker compose -p memagentdemo -f infra/docker-compose.yml logs backend
 
       - name: Show frontend logs on failure
         if: failure()
-        run: docker compose -f infra/docker-compose.yml logs frontend
+        run: docker compose -p memagentdemo -f infra/docker-compose.yml logs frontend
 
       - name: Cleanup
         if: always()
-        run: make down
+        run: docker compose -p memagentdemo -f infra/docker-compose.yml down -v

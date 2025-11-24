@@ -53,12 +53,15 @@ class Conversation(Base):
 
     user: Mapped[User] = relationship("User", back_populates="conversations")
 
-    def add_message(self, role: str, content: str) -> MessageDict:
+    def add_message(
+        self, role: str, content: str, tool_metadata: dict | None = None
+    ) -> MessageDict:
         message_dict = {
             "id": str(uuid4()),
             "role": role,
             "content": content,
             "created_at": datetime.now(UTC).isoformat(),
+            "tool_metadata": tool_metadata,
         }
         if self.messages_document is None:
             self.messages_document = []

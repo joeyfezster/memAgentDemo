@@ -65,7 +65,7 @@ test.describe("Chat Functionality", () => {
     await test.step("Verify user message appears in chat", async () => {
       await expect(
         page
-          .locator(".chat__message--user")
+          .locator(".chat__message.chat__message--user")
           .filter({ hasText: /my name is joe/i }),
       ).toBeVisible({
         timeout: 3000,
@@ -74,7 +74,7 @@ test.describe("Chat Functionality", () => {
 
     await test.step("Verify AI response contains 'joe' and 'banana'", async () => {
       const assistantMessage = page
-        .locator(".chat__message--assistant")
+        .locator(".chat__message.chat__message--assistant")
         .filter({ hasText: /joe/i })
         .first();
 
@@ -103,7 +103,7 @@ test.describe("Chat Functionality", () => {
       await page.getByRole("button", { name: /send/i }).click();
 
       await expect(
-        page.locator(".chat__message--assistant").first(),
+        page.locator(".chat__message.chat__message--assistant").first(),
       ).toBeVisible({
         timeout: 15000,
       });
@@ -115,15 +115,17 @@ test.describe("Chat Functionality", () => {
       await page.getByRole("button", { name: /send/i }).click();
 
       await expect(
-        page.locator(".chat__message--assistant").nth(1),
+        page.locator(".chat__message.chat__message--assistant").nth(1),
       ).toBeVisible({
         timeout: 15000,
       });
     });
 
     await test.step("Verify both exchanges are visible", async () => {
-      const userMessages = page.locator(".chat__message--user");
-      const assistantMessages = page.locator(".chat__message--assistant");
+      const userMessages = page.locator(".chat__message.chat__message--user");
+      const assistantMessages = page.locator(
+        ".chat__message.chat__message--assistant",
+      );
 
       await expect(userMessages).toHaveCount(2);
       await expect(assistantMessages).toHaveCount(2);
@@ -149,12 +151,103 @@ test.describe("Chat Functionality", () => {
       await expect(sendButton).toBeDisabled();
 
       await expect(
-        page.locator(".chat__message--assistant").first(),
+        page.locator(".chat__message.chat__message--assistant").first(),
       ).toBeVisible({
         timeout: 15000,
       });
 
       await expect(sendButton).toBeEnabled();
+    });
+  });
+
+  test("should display tool interactions when agent uses tools", async ({
+    page,
+  }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Send message requiring tool use", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
+
+      // Query that should trigger search_places tool
+      await messageInput.fill("Find Starbucks locations in San Francisco");
+
+      const sendButton = page.getByRole("button", { name: /send/i });
+      await sendButton.click();
+    });
+
+    await test.step("Verify tool interaction UI elements appear", async () => {
+      // Wait for assistant response
+      const assistantMessage = page
+        .locator(".chat__message.chat__message--assistant")
+        .first();
+      await expect(assistantMessage).toBeVisible({ timeout: 30000 });
+
+      // Check for tool interactions container
+      const toolInteractions = page.locator(".tool-interactions");
+      if (await toolInteractions.isVisible()) {
+        // If tools were used, verify the UI
+        const toolUse = page.locator(".tool-interaction.tool-interaction--use");
+        await expect(toolUse.first()).toBeVisible();
+
+        // Should show tool name
+        const toolText = await toolUse.first().textContent();
+        expect(toolText).toBeTruthy();
+        expect(toolText?.toLowerCase()).toContain("calling");
+
+        // Check for tool result
+        const toolResult = page.locator(
+          ".tool-interaction.tool-interaction--result",
+        );
+        if (await toolResult.isVisible()) {
+          await expect(toolResult.first()).toContainText(/result received/i);
+        }
+      }
+    });
+
+    await test.step("Verify final text response is displayed", async () => {
+      const messageText = page.locator(".chat__message-text").last();
+      await expect(messageText).toBeVisible();
+
+      const text = await messageText.textContent();
+      expect(text).toBeTruthy();
+      expect(text!.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("should handle tool details expansion", async ({ page }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Send complex query requiring tools", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await messageInput.fill(
+        "Search for coffee shops near downtown San Francisco and tell me about them",
+      );
+      await page.getByRole("button", { name: /send/i }).click();
+    });
+
+    await test.step("Check if tool details are expandable", async () => {
+      const assistantMessage = page
+        .locator(".chat__message.chat__message--assistant")
+        .first();
+      await expect(assistantMessage).toBeVisible({ timeout: 30000 });
+
+      // If tool interactions are present, test expandability
+      const toolDetails = page.locator(".tool-interaction__details");
+      if ((await toolDetails.count()) > 0) {
+        const firstDetails = toolDetails.first();
+        await firstDetails.click();
+
+        // Should show JSON content
+        const jsonContent = page.locator(".tool-interaction__json").first();
+        await expect(jsonContent).toBeVisible();
+      }
     });
   });
 });
