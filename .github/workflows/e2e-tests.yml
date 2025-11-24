@@ -27,17 +27,7 @@ jobs:
 
       - name: Start containers
         run: |
-          make up &
-          sleep 30
-          docker ps
-
-      - name: Wait for backend to be ready
-        run: |
-          timeout 60 bash -c 'until curl -sf http://localhost:8000/healthz; do sleep 2; done'
-
-      - name: Wait for frontend to be ready
-        run: |
-          timeout 60 bash -c 'until curl -sf http://localhost:5173; do sleep 2; done'
+          docker compose -f infra/docker-compose.yml up -d --wait
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
