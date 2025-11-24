@@ -80,6 +80,8 @@
 - **IMPORTANT**: Activate the virtual environment in a standalone command that can be auto-approved: `source .venv/bin/activate`
 - This activation command must be run separately, not chained with other commands.
 - Only activate the virtual environment when the terminal complains that python is not found.
+- Sometimes, you run a command and expect output but see nothing. This is very likely because of a pager issue. To fix this, try different ways to pipe the command output, for example, with `cat` or `less`. For example: `gh run view <RUN_ID> --log-failed | cat`, then update this file with any new tips learned.
+- this is a good command to run the E2E playwright tests locally: `cd /Users/joeybaruch/Dropbox/0.\ consulting/demo_repos/memAgentDemo2/e2e && pnpm test:reset-db && pnpm playwright test
 
 ## Earned Experience
 

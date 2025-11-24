@@ -18,6 +18,28 @@ from app.db.session import get_session_factory
 from app.db.seed import seed_user_profiles
 
 
+async def nuke_database() -> bool:
+    """Delete ALL data from ALL tables to start from scratch."""
+    print("Nuking database (deleting all data)...")
+
+    try:
+        from sqlalchemy import delete
+        from app.models.conversation import Conversation
+        from app.models.user import User
+
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            # Delete everything
+            await session.execute(delete(Conversation))
+            await session.execute(delete(User))
+            await session.commit()
+            print("✓ Database nuked (all data deleted)")
+        return True
+    except Exception as e:
+        print(f"✗ Error during nuke: {e}", file=sys.stderr)
+        return False
+
+
 def run_migrations(database_url: str) -> bool:
     print("Running database migrations...")
 
@@ -33,16 +55,15 @@ def run_migrations(database_url: str) -> bool:
         return True
 
 
-async def run_seeding(database_url: str) -> bool:
-    print("Seeding personas...")
+async def run_seeding() -> bool:
+    """Seed personas and conversations."""
+    print("Seeding personas and conversations...")
 
     try:
         session_factory = get_session_factory()
         async with session_factory() as session:
             await seed_user_profiles(session)
-        print(
-            "✓ Seeding completed successfully (new personas created or existing ones updated)"
-        )
+        print("✓ Seeding completed successfully")
         return True
     except Exception as e:
         print(f"✗ Error during seeding: {e}", file=sys.stderr)
@@ -57,14 +78,26 @@ def run_initialization() -> int:
         print("✗ DATABASE_URL environment variable not set", file=sys.stderr)
         return 1
 
-    if not run_migrations(database_url):
-        return 1
+    async def nuke_and_seed_with_migrations():
+        # Nuke
+        if not await nuke_database():
+            return False
+
+        # Migrations (run synchronously in between)
+        if not run_migrations(database_url):
+            return False
+
+        # Seed
+        if not await run_seeding():
+            return False
+
+        return True
 
     try:
-        if not asyncio.run(run_seeding(database_url)):
+        if not asyncio.run(nuke_and_seed_with_migrations()):
             return 1
     except Exception as e:
-        print(f"✗ Error during seeding execution: {e}", file=sys.stderr)
+        print(f"✗ Error during initialization: {e}", file=sys.stderr)
         return 1
 
     print("✓ Database initialization completed successfully")

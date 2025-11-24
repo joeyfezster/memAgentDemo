@@ -20,22 +20,20 @@ services:
 
   db-init:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/memagent
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ../backend:/app
     entrypoint: ["python", "db_init.py"]
     command: []
 
   backend:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     env_file:
       - ../backend/.env
     environment:
