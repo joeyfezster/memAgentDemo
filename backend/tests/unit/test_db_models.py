@@ -1,35 +1,59 @@
 from __future__ import annotations
 
+import os
 import pytest
 import pytest_asyncio
-from sqlalchemy import inspect
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.pool import StaticPool
+import testing.postgresql
+from sqlalchemy import inspect, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.base import Base
+from app.db.session import get_engine, get_session_factory, init_engine
 from app.models.user import User
 from app.models.conversation import Conversation
-from app.models.message import Message, MessageRole
+from app.models.types import MessageRole
 from app.core.security import get_password_hash
 
 
-@pytest_asyncio.fixture
-async def test_session():
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+@pytest_asyncio.fixture(scope="module")
+async def unit_test_db():
+    postgresql = testing.postgresql.Postgresql()
+    original_db_url = os.environ.get("DATABASE_URL")
+
+    os.environ["DATABASE_URL"] = postgresql.url().replace(
+        "postgresql://", "postgresql+asyncpg://"
     )
 
+    get_settings.cache_clear()
+    init_engine()
+
+    engine = get_engine()
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
 
-    async_session = AsyncSession(engine, expire_on_commit=False)
-    try:
-        yield async_session
-    finally:
-        await async_session.close()
-        await engine.dispose()
+    await engine.dispose()
+
+    yield
+
+    if original_db_url:
+        os.environ["DATABASE_URL"] = original_db_url
+    get_settings.cache_clear()
+    postgresql.stop()
+
+
+@pytest_asyncio.fixture
+async def test_session(unit_test_db):
+    init_engine()
+    engine = get_engine()
+    session_factory = get_session_factory()
+
+    async with session_factory() as session:
+        yield session
+        await session.rollback()
+
+    await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -108,7 +132,7 @@ async def test_conversation_model_integrity(test_session: AsyncSession):
     await test_session.commit()
     await test_session.refresh(user)
 
-    conversation = Conversation(user_id=user.id)
+    conversation = Conversation(user_id=user.id, messages_document=[])
     test_session.add(conversation)
     await test_session.commit()
     await test_session.refresh(conversation)
@@ -117,10 +141,11 @@ async def test_conversation_model_integrity(test_session: AsyncSession):
     assert conversation.user_id == user.id
     assert conversation.created_at is not None
     assert conversation.updated_at is not None
+    assert conversation.messages_document == []
 
 
 @pytest.mark.asyncio
-async def test_message_model_integrity(test_session: AsyncSession):
+async def test_conversation_with_messages(test_session: AsyncSession):
     user = User(
         email="msg_test@example.com",
         display_name="Message Test User",
@@ -130,47 +155,31 @@ async def test_message_model_integrity(test_session: AsyncSession):
     await test_session.commit()
     await test_session.refresh(user)
 
-    conversation = Conversation(user_id=user.id)
+    conversation = Conversation(user_id=user.id, messages_document=[])
     test_session.add(conversation)
     await test_session.commit()
     await test_session.refresh(conversation)
 
-    test_cases = [
-        (
-            {
-                "conversation_id": conversation.id,
-                "role": MessageRole.USER,
-                "content": "Hello, this is a test message",
-            },
-            None,
-        ),
-        (
-            {
-                "conversation_id": conversation.id,
-                "role": MessageRole.AGENT,
-                "content": "This is a response",
-            },
-            None,
-        ),
+    messages_to_send = [
+        (MessageRole.USER.value, "Hello, this is a test message"),
+        (MessageRole.AGENT.value, "This is a response"),
     ]
 
-    for message_data, expected_error in test_cases:
-        if expected_error:
-            with pytest.raises(expected_error):
-                message = Message(**message_data)
-                test_session.add(message)
-                await test_session.commit()
-        else:
-            message = Message(**message_data)
-            test_session.add(message)
-            await test_session.commit()
-            await test_session.refresh(message)
+    for role, content in messages_to_send:
+        message = conversation.add_message(role, content)
+        assert message.id is not None
+        assert message.role == role
+        assert message.content == content
+        assert message.created_at is not None
 
-            assert message.id is not None
-            assert message.conversation_id == message_data["conversation_id"]
-            assert message.role == message_data["role"]
-            assert message.content == message_data["content"]
-            assert message.created_at is not None
+    await test_session.commit()
+    await test_session.refresh(conversation)
+
+    messages = conversation.get_messages()
+    assert len(messages) == len(messages_to_send)
+    for i, (expected_role, expected_content) in enumerate(messages_to_send):
+        assert messages[i].role == expected_role
+        assert messages[i].content == expected_content
 
 
 @pytest.mark.asyncio
@@ -184,15 +193,12 @@ async def test_cascade_delete(test_session: AsyncSession):
     await test_session.commit()
     await test_session.refresh(user)
 
-    conversation = Conversation(user_id=user.id)
+    conversation = Conversation(user_id=user.id, messages_document=[])
     test_session.add(conversation)
     await test_session.commit()
     await test_session.refresh(conversation)
 
-    message = Message(
-        conversation_id=conversation.id, role="user", content="Test message"
-    )
-    test_session.add(message)
+    conversation.add_message(MessageRole.USER.value, "Test message")
     await test_session.commit()
 
     await test_session.delete(user)
@@ -204,11 +210,6 @@ async def test_cascade_delete(test_session: AsyncSession):
         select(Conversation).where(Conversation.id == conversation.id)
     )
     assert conv_result.scalar_one_or_none() is None
-
-    msg_result = await test_session.execute(
-        select(Message).where(Message.id == message.id)
-    )
-    assert msg_result.scalar_one_or_none() is None
 
 
 @pytest.mark.asyncio
@@ -236,19 +237,15 @@ async def test_conversation_model_columns():
     inspector = inspect(Conversation)
     column_names = {col.name for col in inspector.columns}
 
-    required_columns = {"id", "user_id", "title", "created_at", "updated_at"}
-
-    assert (
-        required_columns == column_names
-    ), f"Missing columns: {required_columns - column_names}, Extra columns: {column_names - required_columns}"
-
-
-@pytest.mark.asyncio
-async def test_message_model_columns():
-    inspector = inspect(Message)
-    column_names = {col.name for col in inspector.columns}
-
-    required_columns = {"id", "conversation_id", "role", "content", "created_at"}
+    required_columns = {
+        "id",
+        "user_id",
+        "title",
+        "messages_document",
+        "embedding",
+        "created_at",
+        "updated_at",
+    }
 
     assert (
         required_columns == column_names

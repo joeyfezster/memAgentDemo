@@ -2,6 +2,7 @@ FROM node:20-alpine AS base
 WORKDIR /app
 ENV PNPM_HOME=/root/.local/share/pnpm
 ENV PATH="$PNPM_HOME:$PATH"
+RUN apk add --no-cache curl
 RUN corepack enable
 
 FROM base AS deps

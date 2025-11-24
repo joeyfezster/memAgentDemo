@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import agent_config
 from app.core.config import Settings
-from app.crud import message as message_crud
-from app.models.message import MessageRole
+from app.crud import conversation as conversation_crud
+from app.models.types import MessageRole
 from app.models.user import User
 
 
@@ -20,9 +20,13 @@ class AgentService:
         user: User,
         session: AsyncSession,
     ) -> str:
-        messages = await message_crud.get_conversation_messages(
-            session, conversation_id
+        conversation = await conversation_crud.get_conversation_by_id(
+            session, conversation_id, user.id
         )
+        if not conversation:
+            raise ValueError(f"Conversation {conversation_id} not found")
+
+        messages = conversation.messages_document
 
         anthropic_messages = self._convert_to_anthropic_format(messages)
         anthropic_messages.append({"role": "user", "content": user_message_content})
@@ -41,6 +45,6 @@ class AgentService:
     def _convert_to_anthropic_format(self, messages: list) -> list[dict[str, str]]:
         anthropic_messages = []
         for msg in messages:
-            role = "user" if msg.role == MessageRole.USER else "assistant"
-            anthropic_messages.append({"role": role, "content": msg.content})
+            role = "user" if msg["role"] == MessageRole.USER.value else "assistant"
+            anthropic_messages.append({"role": role, "content": msg["content"]})
         return anthropic_messages
