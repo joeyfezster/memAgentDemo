@@ -19,6 +19,11 @@
 
 ## Development Decisions
 
+### Developed Memory Mechanisms
+
+1. Conversational message memory: previous messages in conversation are stored and retrieved as context for future messages and compiled into the next llm turn
+1. Long-term conversational retrieval memory: all previous conversations and messages are stored in a document store + vector store (PostgreSQL's JSONB + pgvector). Relevant past messages can be retrieved via keyword, embedding, hibrid, time-bound retrieval strategies (these must be provided to the agent as a tool)
+
 ### Tech Stack & Frameworks
 
 1. FastAPI for backend due to its performance, async support, and modern features
@@ -43,7 +48,7 @@
 
 ### Agent Model
 
-1.
+1. The conversation history is passed completely as context to the LLM for each turn, with no summarization or trimming for now. One way to address this could be a clever summarization strategy for conversation with messages that go beyond some threshold
 
 ### Governance
 
@@ -56,7 +61,7 @@
 
 ### Switching Costs
 
-1. Both the LLM providers and the backend postgres db are somewhat modular and swappable, but the switching costs are non-trivial as i've not focused on the absolute decoupling.
+1. Both the LLM providers and the backend postgres db are somewhat modular and swappable, but the switching costs are non-trivial as i've not focused on the absolute decoupling. A particular point is the tool model.
 
 ### CI
 

@@ -1,5 +1,6 @@
 SHELL := /bin/bash
-DOCKER_COMPOSE := docker compose -f infra/docker-compose.yml
+CLONE_ENV := $(wildcard backend/clone.env)
+DOCKER_COMPOSE := docker compose -f infra/docker-compose.yml --env-file backend/.env $(if $(CLONE_ENV),--env-file $(CLONE_ENV),)
 HAS_DOCKER := $(shell command -v docker >/dev/null 2>&1 && echo 1 || echo 0)
 USE_DOCKER ?= $(HAS_DOCKER)
 ROOT_DIR := $(shell pwd)

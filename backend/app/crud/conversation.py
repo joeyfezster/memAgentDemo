@@ -50,7 +50,11 @@ async def update_conversation_title(
 
 
 async def add_message_to_conversation(
-    session: AsyncSession, conversation_id: str, role: str, content: str
+    session: AsyncSession,
+    conversation_id: str,
+    role: str,
+    content: str,
+    tool_metadata: dict | None = None,
 ) -> MessageDict:
     result = await session.execute(
         select(Conversation).where(Conversation.id == conversation_id)
@@ -59,7 +63,7 @@ async def add_message_to_conversation(
     if not conversation:
         raise ValueError(f"Conversation {conversation_id} not found")
 
-    message = conversation.add_message(role, content)
+    message = conversation.add_message(role, content, tool_metadata)
     await session.commit()
     await session.refresh(conversation)
     return message

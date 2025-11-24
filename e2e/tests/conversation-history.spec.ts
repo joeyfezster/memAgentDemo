@@ -343,6 +343,11 @@ test.describe("Conversation History", () => {
     });
 
     await test.step("Verify second conversation message count increased", async () => {
+      // Wait for at least one assistant message to appear after sending
+      await expect(
+        page.locator("[data-testid='message'][data-role='assistant']").last(),
+      ).toBeVisible({ timeout: 10000 });
+
       const currentSecondConvCount = await page
         .locator("[data-testid='message']")
         .count();

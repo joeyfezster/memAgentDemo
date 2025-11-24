@@ -70,11 +70,27 @@
 ## Testing Conventions
 
 - Each new feature or component must be tested in a functional way. We are looking for validation of the core functionality and behaviors we expect from the code. This includes edge cases and error handling. However, this means we do NOT use mocking, stubbing, or patching unless absolutely necessary. Agents must ask for permission to use these techniques, and provide strong justification for why they are necessary.
+- Acceptable use of mocking: Testing error handling for external API failures that cannot be reliably reproduced (e.g., forcing an LLM to return a malformed response). Avoid mocking internal application logic or database interactions.
 - Write tests that are easy to read and understand.
 - Use the convention of test_cases = [(test_input, expected_output), ...] and a for loop to iterate through them in order to reduce code duplication and increase readability.
 - Write functional tests that cover a wide range of scenarios, including edge cases.
 - Do NOT use mocking or stubbing unless absolutely necessary. Prefer testing the actual behavior of the code.
 - Important: - When planning work, always consider how the work will be validated. Validation is a critical and required part of all incremental feature additions and bug fixes.
+
+### Expensive Tests (API Calls)
+
+- Tests that make real API calls to external services (e.g., Anthropic Claude) are marked with `@pytest.mark.expensive`
+- These tests are SKIPPED by default locally to avoid API credit exhaustion
+- To run ALL tests including expensive ones: `pytest` (default in CI)
+- To skip expensive tests locally: `pytest -m "not expensive"` (recommended for local dev)
+- Files with expensive tests: `backend/tests/test_agent_tools.py` (all 7 tests make real Claude API calls)
+
+### Viewing E2E Test Results
+
+- E2E test screenshots and error context are saved in `e2e/test-results/<test-name-chromium>/`
+- Each failed test has a `test-failed-1.png` screenshot and `error-context.md` with page state
+- HTML test report is generated in `e2e/playwright-report/index.html` - open with `open e2e/playwright-report/index.html`
+- To view screenshots from terminal: Use `ls e2e/test-results/` to list test result folders, then view specific folders for artifacts
 
 ## Running Commands
 

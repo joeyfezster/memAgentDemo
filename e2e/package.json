@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "pnpm test:reset-db && playwright test",
-    "test:reset-db": "cd ../infra && docker compose run --rm db-init",
+    "test:reset-db": "cd .. && docker compose -p memagentdemo -f infra/docker-compose.yml run --rm db-init",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug"

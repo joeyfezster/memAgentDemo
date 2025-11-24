@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import React, { type FormEvent, useEffect, useState } from "react";
 
 import {
   getConversationMessages,
@@ -7,12 +7,14 @@ import {
   type StreamedChatEvent,
   type User,
 } from "../api/client";
+import { ToolInteraction } from "./ToolInteraction";
 
 type ChatMessage = {
   id: string;
   sender: "user" | "assistant";
   text: string;
   streaming?: boolean;
+  tool_metadata?: Message["tool_metadata"];
 };
 
 type ChatWindowProps = {
@@ -55,6 +57,7 @@ export default function ChatWindow({
             sender: msg.role as "user" | "assistant",
             text: msg.content,
             streaming: false,
+            tool_metadata: msg.tool_metadata,
           }),
         );
         setMessages(chatMessages);
@@ -94,6 +97,7 @@ export default function ChatWindow({
       sender: "user",
       text: userMessageText,
       streaming: false,
+      tool_metadata: null,
     };
 
     const assistantPlaceholder: ChatMessage = {
@@ -101,6 +105,7 @@ export default function ChatWindow({
       sender: "assistant",
       text: "",
       streaming: true,
+      tool_metadata: null,
     };
 
     setMessages((current) => [...current, userMessage, assistantPlaceholder]);
@@ -123,6 +128,7 @@ export default function ChatWindow({
                       id: event.message.id,
                       text: event.message.content,
                       streaming: false,
+                      tool_metadata: event.message.tool_metadata,
                     }
                   : msg,
               ),
@@ -154,6 +160,7 @@ export default function ChatWindow({
                       sender: "assistant",
                       text: event.message.content,
                       streaming: false,
+                      tool_metadata: event.message.tool_metadata,
                     }
                   : msg,
               ),
@@ -214,19 +221,38 @@ export default function ChatWindow({
           </p>
         )}
         {!isLoading &&
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`chat__message chat__message--${message.sender}`}
-              data-streaming={message.streaming ? "true" : "false"}
-              data-testid="message"
-              data-role={message.sender}
-            >
-              <span className="chat__message-label">
-                {message.sender === "user" ? user.display_name : "Assistant"}
-              </span>
-              <p>{message.text}</p>
-            </div>
+          messages.map((message, index) => (
+            <React.Fragment key={message.id}>
+              <div
+                className={`chat__message chat__message--${message.sender}`}
+                data-streaming={message.streaming ? "true" : "false"}
+                data-testid="message"
+                data-role={message.sender}
+              >
+                <span className="chat__message-label">
+                  {message.sender === "user" ? user.display_name : "Assistant"}
+                </span>
+                <p className="chat__message-text">{message.text}</p>
+              </div>
+
+              {/* Render tool interactions after the user message that triggered them */}
+              {message.sender === "user" &&
+                index + 1 < messages.length &&
+                messages[index + 1].tool_metadata?.tool_interactions &&
+                (messages[index + 1].tool_metadata?.tool_interactions?.length ??
+                  0) > 0 && (
+                  <div
+                    className="tool-interactions"
+                    key={`tools-${message.id}`}
+                  >
+                    {messages[index + 1].tool_metadata?.tool_interactions?.map(
+                      (interaction, idx) => (
+                        <ToolInteraction key={idx} interaction={interaction} />
+                      ),
+                    )}
+                  </div>
+                )}
+            </React.Fragment>
           ))}
       </div>
 

@@ -22,6 +22,7 @@ class MessageSchema(BaseModel):
     conversation_id: str
     role: MessageRole
     content: str
+    tool_metadata: dict | None = None
     created_at: datetime
 
     @classmethod
@@ -33,6 +34,7 @@ class MessageSchema(BaseModel):
             id=message_dict.id,
             role=MessageRole(message_dict.role),
             content=message_dict.content,
+            tool_metadata=message_dict.tool_metadata,
             created_at=message_dict.created_at,
         )
 

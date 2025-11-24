@@ -113,11 +113,15 @@ async def send_message_to_conversation(
         conversation_id=conversation_id,
         role=MessageRole.USER.value,
         content=payload.content,
+        tool_metadata=None,
     )
 
     settings = get_settings()
     agent_service = AgentService(settings)
-    assistant_reply = await agent_service.generate_response(
+    (
+        assistant_reply,
+        assistant_metadata,
+    ) = await agent_service.generate_response_with_tools(
         conversation_id, payload.content, current_user, session
     )
     assistant_message_dict = await conversation_crud.add_message_to_conversation(
@@ -125,6 +129,7 @@ async def send_message_to_conversation(
         conversation_id=conversation_id,
         role=MessageRole.AGENT.value,
         content=assistant_reply,
+        tool_metadata=assistant_metadata,
     )
 
     await _ensure_conversation_title(
@@ -216,7 +221,7 @@ async def _ensure_conversation_title(
         return
 
     message_count = await conversation_crud.get_message_count(session, conversation_id)
-    if message_count != 2 or conversation.title:
+    if message_count <= 2 or conversation.title:
         return
 
     words = user_content.split()[:4]
