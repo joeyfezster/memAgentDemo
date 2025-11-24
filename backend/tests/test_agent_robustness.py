@@ -21,6 +21,10 @@ from app.core.llm_types import AnthropicStopReason
 from app.services.agent_service import AgentService
 
 
+async def async_return(result):
+    return result
+
+
 @pytest.fixture
 def mock_settings():
     settings = MagicMock(spec=Settings)
@@ -73,19 +77,29 @@ class TestStopReasonHandling:
         mock_response.content = []
         mock_response.usage = Usage(input_tokens=10, output_tokens=10)
 
+        mock_conversation = MagicMock()
+        mock_conversation.messages_document = []
+
         with patch.object(
-            agent_service.client.messages, "create", return_value=mock_response
+            agent_service.client.messages,
+            "create",
+            return_value=async_return(mock_response),
         ):
             with patch.object(
                 agent_service, "_convert_to_anthropic_format", return_value=[]
             ):
-                mock_session = AsyncMock()
-                mock_user = MagicMock()
+                with patch(
+                    "app.services.agent_service.conversation_crud.get_conversation_by_id",
+                    new_callable=AsyncMock,
+                    return_value=mock_conversation,
+                ):
+                    mock_session = AsyncMock()
+                    mock_user = MagicMock()
 
-                with pytest.raises(ValueError, match="Unexpected stop_reason"):
-                    await agent_service.generate_response_with_tools(
-                        "conv-123", "test query", mock_user, mock_session
-                    )
+                    with pytest.raises(ValueError, match="Unexpected stop_reason"):
+                        await agent_service.generate_response_with_tools(
+                            "conv-123", "test query", mock_user, mock_session
+                        )
 
     @pytest.mark.asyncio
     async def test_all_valid_stop_reasons_accepted(self, agent_service):
@@ -110,19 +124,29 @@ class TestResponseContentParsing:
         mock_response.content = []  # No blocks!
         mock_response.usage = Usage(input_tokens=10, output_tokens=10)
 
+        mock_conversation = MagicMock()
+        mock_conversation.messages_document = []
+
         with patch.object(
-            agent_service.client.messages, "create", return_value=mock_response
+            agent_service.client.messages,
+            "create",
+            return_value=async_return(mock_response),
         ):
             with patch.object(
                 agent_service, "_convert_to_anthropic_format", return_value=[]
             ):
-                mock_session = AsyncMock()
-                mock_user = MagicMock()
+                with patch(
+                    "app.services.agent_service.conversation_crud.get_conversation_by_id",
+                    new_callable=AsyncMock,
+                    return_value=mock_conversation,
+                ):
+                    mock_session = AsyncMock()
+                    mock_user = MagicMock()
 
-                with pytest.raises(ValueError, match="no tool_use blocks"):
-                    await agent_service.generate_response_with_tools(
-                        "conv-123", "test query", mock_user, mock_session
-                    )
+                    with pytest.raises(ValueError, match="no tool_use blocks"):
+                        await agent_service.generate_response_with_tools(
+                            "conv-123", "test query", mock_user, mock_session
+                        )
 
     @pytest.mark.asyncio
     async def test_malformed_tool_use_block_raises_error(self, agent_service):
@@ -130,26 +154,39 @@ class TestResponseContentParsing:
         mock_tool_block = MagicMock()
         mock_tool_block.type = "tool_use"
         mock_tool_block.name = "search_places"
-        # Missing: id, input
+        # Ensure attributes are missing for hasattr check
+        del mock_tool_block.id
+        del mock_tool_block.input
 
         mock_response = MagicMock(spec=Message)
         mock_response.stop_reason = AnthropicStopReason.TOOL_USE.value
         mock_response.content = [mock_tool_block]
         mock_response.usage = Usage(input_tokens=10, output_tokens=10)
 
+        mock_conversation = MagicMock()
+        mock_conversation.messages_document = []
+
         with patch.object(
-            agent_service.client.messages, "create", return_value=mock_response
+            agent_service.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            return_value=mock_response,
         ):
             with patch.object(
                 agent_service, "_convert_to_anthropic_format", return_value=[]
             ):
-                mock_session = AsyncMock()
-                mock_user = MagicMock()
+                with patch(
+                    "app.services.agent_service.conversation_crud.get_conversation_by_id",
+                    new_callable=AsyncMock,
+                    return_value=mock_conversation,
+                ):
+                    mock_session = AsyncMock()
+                    mock_user = MagicMock()
 
-                with pytest.raises(ValueError, match="missing required attributes"):
-                    await agent_service.generate_response_with_tools(
-                        "conv-123", "test query", mock_user, mock_session
-                    )
+                    with pytest.raises(ValueError, match="missing required attributes"):
+                        await agent_service.generate_response_with_tools(
+                            "conv-123", "test query", mock_user, mock_session
+                        )
 
     def test_extract_text_content_handles_empty(self, agent_service):
         """_extract_text_content should handle empty content"""
@@ -194,10 +231,10 @@ class TestToolRegistryErrorHandling:
 
     @pytest.mark.asyncio
     async def test_registry_unknown_tool_raises(self):
-        """Registry should raise KeyError for unknown tools"""
+        """Registry should raise ValueError for unknown tools"""
         registry = ToolRegistry()
 
-        with pytest.raises(KeyError, match="unknown_tool"):
+        with pytest.raises(ValueError, match="not found in registry"):
             await registry.execute("unknown_tool", param="value")
 
 
@@ -229,27 +266,37 @@ class TestEndToEndRobustness:
         second_response.content = [mock_text_block]
         second_response.usage = Usage(input_tokens=10, output_tokens=20)
 
+        mock_conversation = MagicMock()
+        mock_conversation.messages_document = []
+
         with patch.object(
             agent_service.client.messages,
             "create",
-            side_effect=[first_response, second_response],
+            side_effect=[async_return(first_response), async_return(second_response)],
         ):
             with patch.object(
                 agent_service, "_convert_to_anthropic_format", return_value=[]
             ):
-                mock_session = AsyncMock()
-                mock_user = MagicMock()
+                with patch(
+                    "app.services.agent_service.conversation_crud.get_conversation_by_id",
+                    new_callable=AsyncMock,
+                    return_value=mock_conversation,
+                ):
+                    mock_session = AsyncMock()
+                    mock_user = MagicMock()
 
-                text, metadata = await agent_service.generate_response_with_tools(
-                    "conv-123", "test query", mock_user, mock_session
-                )
+                    text, metadata = await agent_service.generate_response_with_tools(
+                        "conv-123", "test query", mock_user, mock_session
+                    )
 
-                # Should complete successfully despite tool error
-                assert "error" in text.lower() or "try again" in text.lower()
-                assert metadata["iteration_count"] == 2
-                assert len(metadata["tool_interactions"]) == 2  # tool_use + tool_result
+                    # Should complete successfully despite tool error
+                    assert "error" in text.lower() or "try again" in text.lower()
+                    assert metadata["iteration_count"] == 2
+                    assert (
+                        len(metadata["tool_interactions"]) == 2
+                    )  # tool_use + tool_result
 
-                # Verify tool_result has error
-                tool_result = metadata["tool_interactions"][1]
-                assert tool_result["type"] == "tool_result"
-                assert tool_result["is_error"] is True
+                    # Verify tool_result has error
+                    tool_result = metadata["tool_interactions"][1]
+                    assert tool_result["type"] == "tool_result"
+                    assert tool_result["is_error"] is True

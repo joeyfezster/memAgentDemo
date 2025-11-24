@@ -34,6 +34,7 @@ class MessageSchema(BaseModel):
             id=message_dict.id,
             role=MessageRole(message_dict.role),
             content=message_dict.content,
+            tool_metadata=message_dict.tool_metadata,
             created_at=message_dict.created_at,
         )
 

@@ -1,3 +1,4 @@
+import json
 from anthropic import AsyncAnthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -101,7 +102,6 @@ class AgentService:
                 }
 
             elif response.stop_reason == AnthropicStopReason.MAX_TOKENS.value:
-                # Treat max_tokens like end_turn but log warning
                 final_text = self._extract_text_content(response.content)
                 return final_text, {
                     "tool_interactions": tool_interactions,
@@ -139,14 +139,19 @@ class AgentService:
                             tool_use.name, **tool_use.input
                         )
 
-                        # Check if tool returned error format (defensive tools)
                         is_error = isinstance(result, dict) and "error" in result
+
+                        content_str = (
+                            json.dumps(result)
+                            if isinstance(result, (dict, list))
+                            else str(result)
+                        )
 
                         tool_results.append(
                             {
                                 "type": "tool_result",
                                 "tool_use_id": tool_use.id,
-                                "content": result,
+                                "content": content_str,
                                 "is_error": is_error,
                             }
                         )
@@ -155,7 +160,7 @@ class AgentService:
                             {
                                 "type": "tool_result",
                                 "tool_use_id": tool_use.id,
-                                "content": result,
+                                "content": result,  # Keep original object for metadata/logging
                                 "is_error": is_error,
                             }
                         )

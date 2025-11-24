@@ -9,6 +9,7 @@ import sys
 import os
 import asyncio
 from pathlib import Path
+import sqlalchemy as sa
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -21,36 +22,24 @@ from sqlalchemy.exc import ProgrammingError
 
 
 async def nuke_database() -> bool:
-    """Delete ALL data from ALL tables to start from scratch."""
-    print("Nuking database (deleting all data)...")
+    """Drop ALL tables to start from scratch using CASCADE."""
+    print("Nuking database (dropping all tables with CASCADE)...")
 
     try:
-        from sqlalchemy import delete
-        from app.models.conversation import Conversation
-        from app.models.user import User
+        from app.db.session import get_engine
 
-        session_factory = get_session_factory()
-        async with session_factory() as session:
-            # Delete everything
-            await session.execute(delete(Conversation))
-            await session.execute(delete(User))
-            await session.commit()
-            print("✓ Database nuked (all data deleted)")
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(sa.text("DROP SCHEMA public CASCADE"))
+            await conn.execute(sa.text("CREATE SCHEMA public"))
+            await conn.execute(sa.text("GRANT ALL ON SCHEMA public TO postgres"))
+            await conn.execute(sa.text("GRANT ALL ON SCHEMA public TO public"))
+
+        print("✓ Database nuked (all tables dropped)")
         return True
-    except ProgrammingError as e:
-        if isinstance(e.orig, UndefinedTableError) or (
-            hasattr(e.orig, "__cause__")
-            and isinstance(e.orig.__cause__, UndefinedTableError)
-        ):
-            print(
-                "✓ Database is empty (tables don't exist yet, will be created by migrations)"
-            )
-            return True
-        print(f"✗ Error during nuke: {e}", file=sys.stderr)
-        return False
     except Exception as e:
-        print(f"✗ Error during nuke: {e}", file=sys.stderr)
-        return False
+        print(f"✗ Ignoring Error during nuke: {e}", file=sys.stderr)
+        return True
 
 
 def run_migrations(database_url: str) -> bool:

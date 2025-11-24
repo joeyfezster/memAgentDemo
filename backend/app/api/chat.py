@@ -128,7 +128,7 @@ async def send_message_to_conversation(
     )
 
     message_count = await conversation_crud.get_message_count(session, conversation_id)
-    if message_count == 2 and not conversation.title:
+    if message_count >= 1 and not conversation.title:
         words = payload.content.split()[:4]
         title_prefix = " ".join(words)
         timestamp = datetime.now().strftime("%d-%m:%H:%M")

@@ -77,6 +77,13 @@
 - Do NOT use mocking or stubbing unless absolutely necessary. Prefer testing the actual behavior of the code.
 - Important: - When planning work, always consider how the work will be validated. Validation is a critical and required part of all incremental feature additions and bug fixes.
 
+### Viewing E2E Test Results
+
+- E2E test screenshots and error context are saved in `e2e/test-results/<test-name-chromium>/`
+- Each failed test has a `test-failed-1.png` screenshot and `error-context.md` with page state
+- HTML test report is generated in `e2e/playwright-report/index.html` - open with `open e2e/playwright-report/index.html`
+- To view screenshots from terminal: Use `ls e2e/test-results/` to list test result folders, then view specific folders for artifacts
+
 ## Running Commands
 
 - This project has a virtual environment located at `.venv/`.

@@ -16,3 +16,4 @@ class MessageDict:
     role: str
     content: str
     created_at: str
+    tool_metadata: dict | None = None

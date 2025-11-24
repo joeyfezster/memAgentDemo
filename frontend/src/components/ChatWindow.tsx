@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import React, { type FormEvent, useEffect, useState } from "react";
 
 import {
   getConversationMessages,
@@ -174,32 +174,37 @@ export default function ChatWindow({
           </p>
         )}
         {!isLoading &&
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`chat__message chat__message--${message.sender}`}
-              data-testid="message"
-              data-role={message.sender}
-            >
-              <span className="chat__message-label">
-                {message.sender === "user" ? user.display_name : "Assistant"}
-              </span>
+          messages.map((message, index) => (
+            <React.Fragment key={message.id}>
+              <div
+                className={`chat__message chat__message--${message.sender}`}
+                data-testid="message"
+                data-role={message.sender}
+              >
+                <span className="chat__message-label">
+                  {message.sender === "user" ? user.display_name : "Assistant"}
+                </span>
+                <p className="chat__message-text">{message.text}</p>
+              </div>
 
-              {/* Render tool interactions if present */}
-              {message.tool_metadata?.tool_interactions &&
-                message.tool_metadata.tool_interactions.length > 0 && (
-                  <div className="tool-interactions">
-                    {message.tool_metadata.tool_interactions.map(
+              {/* Render tool interactions after the user message that triggered them */}
+              {message.sender === "user" &&
+                index + 1 < messages.length &&
+                messages[index + 1].tool_metadata?.tool_interactions &&
+                messages[index + 1].tool_metadata.tool_interactions.length >
+                  0 && (
+                  <div
+                    className="tool-interactions"
+                    key={`tools-${message.id}`}
+                  >
+                    {messages[index + 1].tool_metadata.tool_interactions.map(
                       (interaction, idx) => (
                         <ToolInteraction key={idx} interaction={interaction} />
                       ),
                     )}
                   </div>
                 )}
-
-              {/* Final text response */}
-              <p className="chat__message-text">{message.text}</p>
-            </div>
+            </React.Fragment>
           ))}
       </div>
 

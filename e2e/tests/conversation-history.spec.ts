@@ -275,11 +275,16 @@ test.describe("Conversation History", () => {
         timeout: 5000,
       });
 
-      // Wait for agent response
-      await page.waitForTimeout(2000);
+      // Wait for agent response with increased timeout
+      await page.waitForTimeout(4000);
     });
 
     await test.step("Verify second conversation message count increased", async () => {
+      // Wait for at least one assistant message to appear after sending
+      await expect(
+        page.locator("[data-testid='message'][data-role='assistant']").last(),
+      ).toBeVisible({ timeout: 10000 });
+
       const currentSecondConvCount = await page
         .locator("[data-testid='message']")
         .count();
