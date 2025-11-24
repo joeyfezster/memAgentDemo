@@ -14,11 +14,47 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from alembic.config import Config
 from alembic.command import upgrade
-from app.db.session import get_session_factory
+from app.db.session import get_session_factory, init_engine
 from app.db.seed import seed_user_profiles
+from asyncpg.exceptions import UndefinedTableError
+from sqlalchemy.exc import ProgrammingError
+
+
+async def nuke_database() -> bool:
+    """Delete ALL data from ALL tables to start from scratch."""
+    print("Nuking database (deleting all data)...")
+
+    try:
+        from sqlalchemy import delete
+        from app.models.conversation import Conversation
+        from app.models.user import User
+
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            # Delete everything
+            await session.execute(delete(Conversation))
+            await session.execute(delete(User))
+            await session.commit()
+            print("✓ Database nuked (all data deleted)")
+        return True
+    except ProgrammingError as e:
+        if isinstance(e.orig, UndefinedTableError) or (
+            hasattr(e.orig, "__cause__")
+            and isinstance(e.orig.__cause__, UndefinedTableError)
+        ):
+            print(
+                "✓ Database is empty (tables don't exist yet, will be created by migrations)"
+            )
+            return True
+        print(f"✗ Error during nuke: {e}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"✗ Error during nuke: {e}", file=sys.stderr)
+        return False
 
 
 def run_migrations(database_url: str) -> bool:
+    """Run alembic migrations synchronously."""
     print("Running database migrations...")
 
     alembic_cfg = Config("alembic.ini")
@@ -29,21 +65,32 @@ def run_migrations(database_url: str) -> bool:
         print("✓ Migrations completed successfully")
         return True
     except Exception as e:
-        print(f"✓ Migrations already up to date: {e}")
-        return True
+        print(f"✗ Error during migrations: {e}", file=sys.stderr)
+        return False
 
 
-async def run_seeding(database_url: str) -> bool:
-    print("Seeding personas...")
+async def run_seeding() -> bool:
+    """Seed personas and conversations."""
+    print("Seeding personas and conversations...")
 
     try:
         session_factory = get_session_factory()
         async with session_factory() as session:
             await seed_user_profiles(session)
-        print(
-            "✓ Seeding completed successfully (new personas created or existing ones updated)"
-        )
+        print("✓ Seeding completed successfully")
         return True
+    except ProgrammingError as e:
+        if isinstance(e.orig, UndefinedTableError) or (
+            hasattr(e.orig, "__cause__")
+            and isinstance(e.orig.__cause__, UndefinedTableError)
+        ):
+            print(
+                "✗ Error during seeding: Tables don't exist. Migrations may have failed.",
+                file=sys.stderr,
+            )
+            return False
+        print(f"✗ Error during seeding: {e}", file=sys.stderr)
+        return False
     except Exception as e:
         print(f"✗ Error during seeding: {e}", file=sys.stderr)
         return False
@@ -57,14 +104,22 @@ def run_initialization() -> int:
         print("✗ DATABASE_URL environment variable not set", file=sys.stderr)
         return 1
 
-    if not run_migrations(database_url):
-        return 1
-
     try:
-        if not asyncio.run(run_seeding(database_url)):
+        # Nuke
+        init_engine()
+        if not asyncio.run(nuke_database()):
+            return 1
+
+        # Migrations (run synchronously in between)
+        if not run_migrations(database_url):
+            return 1
+
+        # Seed
+        init_engine()
+        if not asyncio.run(run_seeding()):
             return 1
     except Exception as e:
-        print(f"✗ Error during seeding execution: {e}", file=sys.stderr)
+        print(f"✗ Error during initialization: {e}", file=sys.stderr)
         return 1
 
     print("✓ Database initialization completed successfully")

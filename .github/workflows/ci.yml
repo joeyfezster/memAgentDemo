@@ -21,6 +21,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install PostgreSQL with pgvector
+        if: matrix.service == 'backend'
+        run: |
+          # Install PostgreSQL and pgvector from official APT repository
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-16 postgresql-16-pgvector
+
+          # Add PostgreSQL binaries to PATH
+          echo "/usr/lib/postgresql/16/bin" >> $GITHUB_PATH
       - name: Install backend dependencies
         if: matrix.service == 'backend'
         working-directory: backend
@@ -84,6 +93,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
-        run: docker build -t memagentdemo-backend:ci backend
+        run: docker build -t memagentdemo-backend:ci -f backend/Dockerfile .
       - name: Build frontend image
         run: docker build -t memagentdemo-frontend:ci --target build frontend

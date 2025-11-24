@@ -12,9 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.crud import conversation as conversation_crud
-from app.crud import message as message_crud
 from app.db.session import get_session
-from app.models.message import Message, MessageRole
+
 from app.models.user import User
 from app.schemas.chat import (
     ChatMessage,
@@ -23,6 +22,7 @@ from app.schemas.chat import (
     ConversationSchema,
     CreateConversationResponse,
     MessageListResponse,
+    MessageRole,
     MessageSchema,
     SendMessageRequest,
     SendMessageResponse,
@@ -84,10 +84,11 @@ async def get_conversation_messages(
             status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
         )
 
-    messages = await message_crud.get_conversation_messages(session, conversation_id)
-    return MessageListResponse(
-        messages=[MessageSchema.model_validate(msg) for msg in messages]
+    message_dicts = await conversation_crud.get_conversation_messages(
+        session, conversation_id
     )
+    messages = [MessageSchema.from_dict(conversation_id, msg) for msg in message_dicts]
+    return MessageListResponse(messages=messages)
 
 
 @router.post(
@@ -107,10 +108,10 @@ async def send_message_to_conversation(
             status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
         )
 
-    user_message = await message_crud.create_message(
+    user_message_dict = await conversation_crud.add_message_to_conversation(
         session,
         conversation_id=conversation_id,
-        role=MessageRole.USER,
+        role=MessageRole.USER.value,
         content=payload.content,
     )
 
@@ -119,10 +120,10 @@ async def send_message_to_conversation(
     assistant_reply = await agent_service.generate_response(
         conversation_id, payload.content, current_user, session
     )
-    assistant_message = await message_crud.create_message(
+    assistant_message_dict = await conversation_crud.add_message_to_conversation(
         session,
         conversation_id=conversation_id,
-        role=MessageRole.AGENT,
+        role=MessageRole.AGENT.value,
         content=assistant_reply,
     )
 
@@ -130,9 +131,11 @@ async def send_message_to_conversation(
         session, conversation_id, current_user.id, payload.content
     )
 
+    user_message = MessageSchema.from_dict(conversation_id, user_message_dict)
+    assistant_message = MessageSchema.from_dict(conversation_id, assistant_message_dict)
+
     return SendMessageResponse(
-        user_message=MessageSchema.model_validate(user_message),
-        assistant_message=MessageSchema.model_validate(assistant_message),
+        user_message=user_message, assistant_message=assistant_message
     )
 
 
@@ -151,12 +154,13 @@ async def stream_message_to_conversation(
             status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
         )
 
-    user_message = await message_crud.create_message(
+    user_message_dict = await conversation_crud.add_message_to_conversation(
         session,
         conversation_id=conversation_id,
-        role=MessageRole.USER,
+        role=MessageRole.USER.value,
         content=payload.content,
     )
+    user_message = MessageSchema.from_dict(conversation_id, user_message_dict)
 
     settings = get_settings()
     agent_service = AgentService(settings)
@@ -173,11 +177,14 @@ async def stream_message_to_conversation(
             assistant_chunks.append(chunk)
             yield _format_sse({"type": "chunk", "content": chunk})
 
-        assistant_message = await message_crud.create_message(
+        assistant_message_dict = await conversation_crud.add_message_to_conversation(
             session,
             conversation_id=conversation_id,
-            role=MessageRole.AGENT,
+            role=MessageRole.AGENT.value,
             content="".join(assistant_chunks),
+        )
+        assistant_message = MessageSchema.from_dict(
+            conversation_id, assistant_message_dict
         )
 
         await _ensure_conversation_title(
@@ -208,7 +215,7 @@ async def _ensure_conversation_title(
     if not conversation:
         return
 
-    message_count = await message_crud.get_message_count(session, conversation_id)
+    message_count = await conversation_crud.get_message_count(session, conversation_id)
     if message_count != 2 or conversation.title:
         return
 
@@ -219,8 +226,8 @@ async def _ensure_conversation_title(
     await conversation_crud.update_conversation_title(session, conversation_id, title)
 
 
-def _serialize_message(message: Message) -> dict[str, Any]:
-    return MessageSchema.model_validate(message).model_dump()
+def _serialize_message(message: MessageSchema) -> dict[str, Any]:
+    return message.model_dump()
 
 
 def _format_sse(payload: dict[str, Any]) -> str:

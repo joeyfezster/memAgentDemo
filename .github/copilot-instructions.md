@@ -35,8 +35,10 @@
 ### Checking PR CI Status
 
 - Use `gh pr checks <PR_NUMBER> --watch` in background mode to monitor CI checks in real-time
-- For viewing logs without pager issues, pipe commands through `cat` or `less`: `gh run view <RUN_ID> --log-failed | cat`
-- To get the latest failed run logs: `gh run list --branch <BRANCH> --limit 1 --json databaseId --jq '.[0].databaseId' | xargs -I {} gh run view {} --log-failed | cat`
+- **CRITICAL**: Always set `GH_PAGER` environment variable to prevent pager issues: `GH_PAGER=cat gh <command>`
+- For viewing logs: `GH_PAGER=cat gh run view <RUN_ID> --log-failed`
+- To get the latest failed run logs: `gh run list --branch <BRANCH> --limit 1 --json databaseId --jq '.[0].databaseId' | xargs -I {} GH_PAGER=cat gh run view {} --log-failed`
+- All gh CLI commands that display output should use `GH_PAGER=cat` to avoid terminal pager blocking
 
 ### Git Commit Messages
 
@@ -80,6 +82,8 @@
 - **IMPORTANT**: Activate the virtual environment in a standalone command that can be auto-approved: `source .venv/bin/activate`
 - This activation command must be run separately, not chained with other commands.
 - Only activate the virtual environment when the terminal complains that python is not found.
+- Sometimes, you run a command and expect output but see nothing. This is very likely because of a pager issue. To fix this, try different ways to pipe the command output, for example, with `cat` or `less`. For example: `gh run view <RUN_ID> --log-failed | cat`, then update this file with any new tips learned.
+- this is a good command to run the E2E playwright tests locally: `cd /Users/joeybaruch/Dropbox/0.\ consulting/demo_repos/memAgentDemo2/e2e && pnpm test:reset-db && pnpm playwright test
 
 ## Earned Experience
 

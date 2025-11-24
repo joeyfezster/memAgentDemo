@@ -118,7 +118,11 @@ export default function ChatWindow({
             setMessages((current) =>
               current.map((msg) =>
                 msg.id === tempId
-                  ? { ...msg, id: event.message.id, text: event.message.content }
+                  ? {
+                      ...msg,
+                      id: event.message.id,
+                      text: event.message.content,
+                    }
                   : msg,
               ),
             );
@@ -210,6 +214,8 @@ export default function ChatWindow({
               key={message.id}
               className={`chat__message chat__message--${message.sender}`}
               data-streaming={message.streaming ? "true" : "false"}
+              data-testid="message"
+              data-role={message.sender}
             >
               <span className="chat__message-label">
                 {message.sender === "user" ? user.display_name : "Assistant"}
@@ -231,9 +237,15 @@ export default function ChatWindow({
           placeholder="Type your message here..."
           rows={3}
           required
+          data-testid="message-input"
         />
         <div className="chat__actions">
-          <button className="chat__send" type="submit" disabled={isSending}>
+          <button
+            className="chat__send"
+            type="submit"
+            disabled={isSending}
+            data-testid="send-button"
+          >
             {isSending ? "Sending..." : "Send"}
           </button>
         </div>
