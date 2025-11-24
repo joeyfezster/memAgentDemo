@@ -6,11 +6,13 @@ import {
   type Message,
   type User,
 } from "../api/client";
+import { ToolInteraction } from "./ToolInteraction";
 
 type ChatMessage = {
   id: string;
   sender: "user" | "assistant";
   text: string;
+  metadata?: Message["metadata"];
 };
 
 type ChatWindowProps = {
@@ -52,6 +54,7 @@ export default function ChatWindow({
             id: msg.id,
             sender: msg.role as "user" | "assistant",
             text: msg.content,
+            metadata: msg.metadata,
           }),
         );
         setMessages(chatMessages);
@@ -89,6 +92,7 @@ export default function ChatWindow({
       id: tempId,
       sender: "user",
       text: userMessageText,
+      metadata: null,
     };
 
     setMessages((current) => [...current, userMessage]);
@@ -111,11 +115,13 @@ export default function ChatWindow({
             id: response.user_message.id,
             sender: "user",
             text: response.user_message.content,
+            metadata: response.user_message.metadata,
           },
           {
             id: response.assistant_message.id,
             sender: "assistant",
             text: response.assistant_message.content,
+            metadata: response.assistant_message.metadata,
           },
         ];
       });
@@ -178,7 +184,21 @@ export default function ChatWindow({
               <span className="chat__message-label">
                 {message.sender === "user" ? user.display_name : "Assistant"}
               </span>
-              <p>{message.text}</p>
+
+              {/* Render tool interactions if present */}
+              {message.metadata?.tool_interactions &&
+                message.metadata.tool_interactions.length > 0 && (
+                  <div className="chat__tool-interactions">
+                    {message.metadata.tool_interactions.map(
+                      (interaction, idx) => (
+                        <ToolInteraction key={idx} interaction={interaction} />
+                      ),
+                    )}
+                  </div>
+                )}
+
+              {/* Final text response */}
+              <p className="chat__message-text">{message.text}</p>
             </div>
           ))}
       </div>

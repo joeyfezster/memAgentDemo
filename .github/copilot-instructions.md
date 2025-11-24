@@ -70,6 +70,7 @@
 ## Testing Conventions
 
 - Each new feature or component must be tested in a functional way. We are looking for validation of the core functionality and behaviors we expect from the code. This includes edge cases and error handling. However, this means we do NOT use mocking, stubbing, or patching unless absolutely necessary. Agents must ask for permission to use these techniques, and provide strong justification for why they are necessary.
+- Acceptable use of mocking: Testing error handling for external API failures that cannot be reliably reproduced (e.g., forcing an LLM to return a malformed response). Avoid mocking internal application logic or database interactions.
 - Write tests that are easy to read and understand.
 - Use the convention of test_cases = [(test_input, expected_output), ...] and a for loop to iterate through them in order to reduce code duplication and increase readability.
 - Write functional tests that cover a wide range of scenarios, including edge cases.

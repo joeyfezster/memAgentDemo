@@ -20,14 +20,20 @@ export type User = {
   updated_at: string;
 };
 
-export type LoginResponse = {
-  access_token: string;
-  token_type: string;
-  user: User;
+export type ToolInteraction = {
+  type: "tool_use" | "tool_result";
+  id?: string;
+  tool_use_id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  content?: unknown;
+  is_error?: boolean;
 };
 
-export type ChatResponse = {
-  reply: string;
+export type MessageMetadata = {
+  tool_interactions?: ToolInteraction[];
+  iteration_count?: number;
+  stop_reason?: string;
 };
 
 export type Message = {
@@ -36,6 +42,17 @@ export type Message = {
   role: string;
   content: string;
   created_at: string;
+  metadata?: MessageMetadata | null;
+};
+
+export type LoginResponse = {
+  access_token: string;
+  token_type: string;
+  user: User;
+};
+
+export type ChatResponse = {
+  reply: string;
 };
 
 export type Conversation = {

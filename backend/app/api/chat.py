@@ -108,11 +108,15 @@ async def send_message_to_conversation(
         conversation_id=conversation_id,
         role=MessageRole.USER.value,
         content=payload.content,
+        metadata=None,
     )
 
     settings = get_settings()
     agent_service = AgentService(settings)
-    assistant_reply = await agent_service.generate_response(
+    (
+        assistant_reply,
+        assistant_metadata,
+    ) = await agent_service.generate_response_with_tools(
         conversation_id, payload.content, current_user, session
     )
     assistant_message_dict = await conversation_crud.add_message_to_conversation(
@@ -120,6 +124,7 @@ async def send_message_to_conversation(
         conversation_id=conversation_id,
         role=MessageRole.AGENT.value,
         content=assistant_reply,
+        metadata=assistant_metadata,
     )
 
     message_count = await conversation_crud.get_message_count(session, conversation_id)
