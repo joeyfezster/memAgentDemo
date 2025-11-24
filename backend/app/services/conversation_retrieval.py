@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, Text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
+from app.models.types import MessageDict
 
 
 async def search_conversations_fulltext(
@@ -41,9 +42,7 @@ async def search_conversations_fulltext(
         select(Conversation)
         .where(
             Conversation.user_id == user_id,
-            func.cast(Conversation.messages_document, type_=text("text")).ilike(
-                f"%{search_text}%"
-            ),
+            func.cast(Conversation.messages_document, Text).ilike(f"%{search_text}%"),
         )
         .limit(limit)
     )
@@ -167,7 +166,7 @@ async def search_conversations_hybrid(
 
 def filter_messages_by_role(
     conversation: Conversation, message_role: str
-) -> list[dict]:
+) -> list[MessageDict]:
     """Filter messages in a conversation by role.
 
     Extracts only messages with a specific role from a conversation.
@@ -188,12 +187,12 @@ def filter_messages_by_role(
         >>> agent_msgs = filter_messages_by_role(conversation, "_agent")
     """
     messages = conversation.get_messages()
-    return [msg for msg in messages if msg.get("role") == message_role]
+    return [msg for msg in messages if msg.role == message_role]
 
 
 def filter_messages_by_date_range(
     conversation: Conversation, start: datetime, end: datetime
-) -> list[dict]:
+) -> list[MessageDict]:
     """Filter messages in a conversation by date range.
 
     Extracts messages created within a specific time window. Useful for
@@ -219,7 +218,7 @@ def filter_messages_by_date_range(
     messages = conversation.get_messages()
     filtered = []
     for msg in messages:
-        created_at_str = msg.get("created_at")
+        created_at_str = msg.created_at
         if created_at_str:
             try:
                 if isinstance(created_at_str, str):

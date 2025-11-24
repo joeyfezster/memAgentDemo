@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.conversation import Conversation
+from app.models.types import MessageDict
 
 
 async def create_conversation(session: AsyncSession, *, user_id: str) -> Conversation:
@@ -49,7 +51,7 @@ async def update_conversation_title(
 
 async def add_message_to_conversation(
     session: AsyncSession, conversation_id: str, role: str, content: str
-) -> dict[str, str]:
+) -> MessageDict:
     result = await session.execute(
         select(Conversation).where(Conversation.id == conversation_id)
     )
@@ -65,7 +67,7 @@ async def add_message_to_conversation(
 
 async def get_conversation_messages(
     session: AsyncSession, conversation_id: str
-) -> list[dict[str, str]]:
+) -> list[MessageDict]:
     result = await session.execute(
         select(Conversation).where(Conversation.id == conversation_id)
     )

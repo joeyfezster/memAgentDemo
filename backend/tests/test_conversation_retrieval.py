@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.security import get_password_hash
 from app.db.base import Base
 from app.models.conversation import Conversation
-from app.models.message import MessageRole
+from app.models.types import MessageRole
 from app.models.user import User
 from app.services.conversation_retrieval import (
     filter_messages_by_date_range,
@@ -176,8 +176,8 @@ async def test_filter_messages_by_role(conversations_with_messages: list[Convers
 
     assert len(user_messages) == 1
     assert len(agent_messages) == 1
-    assert user_messages[0]["role"] == MessageRole.USER.value
-    assert agent_messages[0]["role"] == MessageRole.AGENT.value
+    assert user_messages[0].role == MessageRole.USER.value
+    assert agent_messages[0].role == MessageRole.AGENT.value
 
 
 @pytest.mark.asyncio
@@ -193,7 +193,7 @@ async def test_filter_messages_by_date_range(
 
     assert len(filtered) >= 1
     for msg in filtered:
-        msg_date = datetime.fromisoformat(msg["created_at"].replace("Z", "+00:00"))
+        msg_date = datetime.fromisoformat(msg.created_at.replace("Z", "+00:00"))
         assert start <= msg_date <= end
 
 

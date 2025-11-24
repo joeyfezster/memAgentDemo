@@ -21,6 +21,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install PostgreSQL with pgvector
+        if: matrix.service == 'backend'
+        run: |
+          # Install PostgreSQL
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-server-dev-16
+
+          # Build and install pgvector
+          cd /tmp
+          git clone --branch v0.8.1 --depth 1 https://github.com/pgvector/pgvector.git
+          cd pgvector
+          export PG_CONFIG=/usr/lib/postgresql/16/bin/pg_config
+          make
+          sudo make install
+
+          # Add PostgreSQL binaries to PATH
+          echo "/usr/lib/postgresql/16/bin" >> $GITHUB_PATH
       - name: Install backend dependencies
         if: matrix.service == 'backend'
         working-directory: backend

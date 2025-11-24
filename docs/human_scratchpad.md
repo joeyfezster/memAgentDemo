@@ -23,7 +23,7 @@
 
 1. FastAPI for backend due to its performance, async support, and modern features
 1. React with Vite for frontend for fast development and modern tooling
-1. PostgreSQL as the database for reliability and robustness
+1. PostgreSQL + PGVector as the database for reliability and robustness
 1. Docker and Docker Compose for containerization and easy local setup
 1. Pip for Python dependency management
 1. Anthropic's Claude 3 as the LLM for its capabilities and alignment features
@@ -53,6 +53,10 @@
 ### Data Model
 
 1.
+
+### Switching Costs
+
+1. Both the LLM providers and the backend postgres db are somewhat modular and swappable, but the switching costs are non-trivial as i've not focused on the absolute decoupling.
 
 ### CI
 

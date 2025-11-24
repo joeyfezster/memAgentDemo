@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from app.crud import conversation as conversation_crud
 from app.db.base import Base
 from app.models.conversation import Conversation
-from app.models.message import MessageRole
+from app.models.types import MessageRole
 from app.models.user import User
 from app.core.security import get_password_hash
 
@@ -72,10 +72,10 @@ async def test_add_message_to_conversation(test_session: AsyncSession, test_user
         content="Hello, world!",
     )
 
-    assert message["id"] is not None
-    assert message["role"] == MessageRole.USER.value
-    assert message["content"] == "Hello, world!"
-    assert message["created_at"] is not None
+    assert message.id is not None
+    assert message.role == MessageRole.USER.value
+    assert message.content == "Hello, world!"
+    assert message.created_at is not None
 
     await test_session.refresh(conversation)
     assert conversation.get_message_count() == 1
@@ -104,8 +104,8 @@ async def test_get_conversation_messages(test_session: AsyncSession, test_user: 
 
     assert len(retrieved_messages) == len(test_messages)
     for i, (expected_role, expected_content) in enumerate(test_messages):
-        assert retrieved_messages[i]["role"] == expected_role
-        assert retrieved_messages[i]["content"] == expected_content
+        assert retrieved_messages[i].role == expected_role
+        assert retrieved_messages[i].content == expected_content
 
 
 @pytest.mark.asyncio
@@ -133,8 +133,8 @@ async def test_message_ordering_preserved(test_session: AsyncSession, test_user:
 
     assert len(messages) == len(messages_to_add)
     for i, (expected_role, expected_content) in enumerate(messages_to_add):
-        assert messages[i]["role"] == expected_role
-        assert messages[i]["content"] == expected_content
+        assert messages[i].role == expected_role
+        assert messages[i].content == expected_content
 
 
 @pytest.mark.asyncio
@@ -153,12 +153,12 @@ async def test_conversation_with_special_characters(
         content=special_content,
     )
 
-    assert message["content"] == special_content
+    assert message.content == special_content
 
     messages = await conversation_crud.get_conversation_messages(
         test_session, conversation.id
     )
-    assert messages[0]["content"] == special_content
+    assert messages[0].content == special_content
 
 
 @pytest.mark.asyncio

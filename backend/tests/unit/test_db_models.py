@@ -1,35 +1,59 @@
 from __future__ import annotations
 
+import os
 import pytest
 import pytest_asyncio
-from sqlalchemy import inspect
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.pool import StaticPool
+import testing.postgresql
+from sqlalchemy import inspect, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.base import Base
+from app.db.session import get_engine, get_session_factory, init_engine
 from app.models.user import User
 from app.models.conversation import Conversation
-from app.models.message import MessageRole
+from app.models.types import MessageRole
 from app.core.security import get_password_hash
 
 
-@pytest_asyncio.fixture
-async def test_session():
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+@pytest_asyncio.fixture(scope="module")
+async def unit_test_db():
+    postgresql = testing.postgresql.Postgresql()
+    original_db_url = os.environ.get("DATABASE_URL")
+
+    os.environ["DATABASE_URL"] = postgresql.url().replace(
+        "postgresql://", "postgresql+asyncpg://"
     )
 
+    get_settings.cache_clear()
+    init_engine()
+
+    engine = get_engine()
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
 
-    async_session = AsyncSession(engine, expire_on_commit=False)
-    try:
-        yield async_session
-    finally:
-        await async_session.close()
-        await engine.dispose()
+    await engine.dispose()
+
+    yield
+
+    if original_db_url:
+        os.environ["DATABASE_URL"] = original_db_url
+    get_settings.cache_clear()
+    postgresql.stop()
+
+
+@pytest_asyncio.fixture
+async def test_session(unit_test_db):
+    init_engine()
+    engine = get_engine()
+    session_factory = get_session_factory()
+
+    async with session_factory() as session:
+        yield session
+        await session.rollback()
+
+    await engine.dispose()
 
 
 @pytest.mark.asyncio

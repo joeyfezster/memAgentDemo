@@ -1,28 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, JSON, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
 
 from app.core.config import get_settings
 from app.db.base import Base
+from app.models.types import MessageDict
 
 if TYPE_CHECKING:
     from app.models.user import User
-
-
-@dataclass
-class MessageDict:
-    id: str
-    role: str
-    content: str
-    created_at: str
 
 
 class Conversation(Base):
@@ -36,8 +28,10 @@ class Conversation(Base):
         index=True,
     )
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    messages_document: Mapped[list] = mapped_column(
-        JSONB, nullable=False, server_default="[]"
+    messages_document: Mapped[list[dict]] = mapped_column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=False,
+        server_default=text("'[]'"),
     )
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(get_settings().embedding_dimension), nullable=True

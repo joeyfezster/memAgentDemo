@@ -1,5 +1,5 @@
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 
 from app.main import app
 
@@ -17,9 +17,7 @@ async def test_agent_uses_logged_in_user_name() -> None:
     ]
 
     for email, password, user_message, expected_name, expected_word in test_cases:
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(app=app, base_url="http://test") as client:
             login_response = await client.post(
                 "/auth/login", json={"email": email, "password": password}
             )
@@ -54,9 +52,7 @@ async def test_agent_uses_logged_in_user_name() -> None:
 
 @pytest.mark.asyncio
 async def test_multi_user_isolation() -> None:
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(app=app, base_url="http://test") as client:
         sarah_login = await client.post(
             "/auth/login",
             json={"email": "sarah@chickfilb.com", "password": "changeme123"},
