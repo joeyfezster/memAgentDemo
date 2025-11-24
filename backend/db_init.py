@@ -36,6 +36,12 @@ async def nuke_database() -> bool:
             print("✓ Database nuked (all data deleted)")
         return True
     except Exception as e:
+        # If tables don't exist yet, that's okay - migrations will create them
+        if "does not exist" in str(e):
+            print(
+                "✓ Database is empty (tables don't exist yet, will be created by migrations)"
+            )
+            return True
         print(f"✗ Error during nuke: {e}", file=sys.stderr)
         return False
 
