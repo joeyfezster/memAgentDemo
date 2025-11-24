@@ -16,6 +16,8 @@ from alembic.config import Config
 from alembic.command import upgrade
 from app.db.session import get_session_factory
 from app.db.seed import seed_user_profiles
+from asyncpg.exceptions import UndefinedTableError
+from sqlalchemy.exc import ProgrammingError
 
 
 async def nuke_database() -> bool:
@@ -35,18 +37,21 @@ async def nuke_database() -> bool:
             await session.commit()
             print("✓ Database nuked (all data deleted)")
         return True
-    except Exception as e:
-        # If tables don't exist yet, that's okay - migrations will create them
-        if "does not exist" in str(e):
+    except ProgrammingError as e:
+        if isinstance(e.orig, UndefinedTableError):
             print(
                 "✓ Database is empty (tables don't exist yet, will be created by migrations)"
             )
             return True
         print(f"✗ Error during nuke: {e}", file=sys.stderr)
         return False
+    except Exception as e:
+        print(f"✗ Error during nuke: {e}", file=sys.stderr)
+        return False
 
 
 def run_migrations(database_url: str) -> bool:
+    """Run alembic migrations synchronously."""
     print("Running database migrations...")
 
     alembic_cfg = Config("alembic.ini")
@@ -57,8 +62,8 @@ def run_migrations(database_url: str) -> bool:
         print("✓ Migrations completed successfully")
         return True
     except Exception as e:
-        print(f"✓ Migrations already up to date: {e}")
-        return True
+        print(f"✗ Error during migrations: {e}", file=sys.stderr)
+        return False
 
 
 async def run_seeding() -> bool:
@@ -71,6 +76,15 @@ async def run_seeding() -> bool:
             await seed_user_profiles(session)
         print("✓ Seeding completed successfully")
         return True
+    except ProgrammingError as e:
+        if isinstance(e.orig, UndefinedTableError):
+            print(
+                "✗ Error during seeding: Tables don't exist. Migrations may have failed.",
+                file=sys.stderr,
+            )
+            return False
+        print(f"✗ Error during seeding: {e}", file=sys.stderr)
+        return False
     except Exception as e:
         print(f"✗ Error during seeding: {e}", file=sys.stderr)
         return False
