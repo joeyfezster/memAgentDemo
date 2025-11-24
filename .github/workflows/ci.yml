@@ -93,6 +93,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
-        run: docker build -t memagentdemo-backend:ci backend
+        run: docker build -t memagentdemo-backend:ci -f backend/Dockerfile .
       - name: Build frontend image
         run: docker build -t memagentdemo-frontend:ci --target build frontend

@@ -3,7 +3,7 @@ from __future__ import annotations
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -18,14 +18,18 @@ _engine: Optional[AsyncEngine] = None
 AsyncSessionFactory: async_sessionmaker[AsyncSession] | None = None
 
 
-def init_engine(database_url: str | None = None) -> AsyncEngine:
+def init_engine(database_url: str | None = None, **engine_kwargs: Any) -> AsyncEngine:
     global _engine, AsyncSessionFactory
     settings = get_settings()
     url = database_url or settings.database_url
     if _engine is not None:
         # Dispose existing engine before creating a new one
         _engine.sync_engine.dispose(close=True)
-    _engine = create_async_engine(url, future=True, echo=settings.debug)
+
+    default_kwargs = {"future": True, "echo": settings.debug, "pool_pre_ping": True}
+    default_kwargs.update(engine_kwargs)
+
+    _engine = create_async_engine(url, **default_kwargs)
     AsyncSessionFactory = async_sessionmaker(bind=_engine, expire_on_commit=False)
     return _engine
 
