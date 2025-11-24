@@ -56,6 +56,10 @@ jobs:
           path: e2e/playwright-report/
           retention-days: 7
 
+      - name: Show db-init logs on failure
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs db-init
+
       - name: Show backend logs on failure
         if: failure()
         run: docker compose -f infra/docker-compose.yml logs backend
