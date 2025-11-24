@@ -77,6 +77,14 @@
 - Do NOT use mocking or stubbing unless absolutely necessary. Prefer testing the actual behavior of the code.
 - Important: - When planning work, always consider how the work will be validated. Validation is a critical and required part of all incremental feature additions and bug fixes.
 
+### Expensive Tests (API Calls)
+
+- Tests that make real API calls to external services (e.g., Anthropic Claude) are marked with `@pytest.mark.expensive`
+- These tests are SKIPPED by default locally to avoid API credit exhaustion
+- To run ALL tests including expensive ones: `pytest` (default in CI)
+- To skip expensive tests locally: `pytest -m "not expensive"` (recommended for local dev)
+- Files with expensive tests: `backend/tests/test_agent_tools.py` (all 7 tests make real Claude API calls)
+
 ### Viewing E2E Test Results
 
 - E2E test screenshots and error context are saved in `e2e/test-results/<test-name-chromium>/`

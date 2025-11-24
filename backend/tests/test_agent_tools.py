@@ -7,7 +7,7 @@ from app.models.types import MessageRole
 from app.models.user import User
 from app.services.agent_service import AgentService
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.expensive]
 TEST_MODEL = "claude-opus-4-1-20250805"
 
 
