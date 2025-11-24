@@ -108,7 +108,7 @@ async def send_message_to_conversation(
         conversation_id=conversation_id,
         role=MessageRole.USER.value,
         content=payload.content,
-        metadata=None,
+        tool_metadata=None,
     )
 
     settings = get_settings()
@@ -124,7 +124,7 @@ async def send_message_to_conversation(
         conversation_id=conversation_id,
         role=MessageRole.AGENT.value,
         content=assistant_reply,
-        metadata=assistant_metadata,
+        tool_metadata=assistant_metadata,
     )
 
     message_count = await conversation_crud.get_message_count(session, conversation_id)

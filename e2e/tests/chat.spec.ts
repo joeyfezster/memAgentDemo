@@ -187,7 +187,7 @@ test.describe("Chat Functionality", () => {
       await expect(assistantMessage).toBeVisible({ timeout: 30000 });
 
       // Check for tool interactions container
-      const toolInteractions = page.locator(".chat__tool-interactions");
+      const toolInteractions = page.locator(".tool-interactions");
       if (await toolInteractions.isVisible()) {
         // If tools were used, verify the UI
         const toolUse = page.locator(".tool-interaction.tool-interaction--use");

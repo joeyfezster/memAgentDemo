@@ -42,7 +42,7 @@ export type Message = {
   role: string;
   content: string;
   created_at: string;
-  metadata?: MessageMetadata | null;
+  tool_metadata?: MessageMetadata | null;
 };
 
 export type LoginResponse = {

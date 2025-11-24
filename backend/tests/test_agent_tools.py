@@ -22,12 +22,12 @@ class TestAgentToolCalling:
     async def test_single_tool_call_search_places(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """User asks to find places, agent calls search_places once"""
         # Create conversation
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         # User query requiring tool use
         user_query = "Find the top 5 Starbucks locations in San Francisco"
@@ -37,7 +37,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 
@@ -74,11 +74,11 @@ class TestAgentToolCalling:
     async def test_multi_tool_sequence(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """Agent makes multiple tool calls in sequence"""
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         # Query requiring search + summary
         user_query = (
@@ -92,7 +92,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 
@@ -120,11 +120,11 @@ class TestAgentToolCalling:
     async def test_tool_error_handling(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """Agent handles tool execution errors gracefully"""
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         # Query that might trigger edge case
         user_query = "Find places in a completely invalid location with bad parameters"
@@ -133,7 +133,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 
@@ -147,11 +147,11 @@ class TestAgentToolCalling:
     async def test_max_iterations_safety(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """Agent stops after max iterations"""
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         # Complex query
         user_query = "Analyze every coffee shop in the United States in detail"
@@ -162,7 +162,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 
@@ -178,11 +178,11 @@ class TestAgentToolCalling:
     async def test_conversation_persistence_with_tools(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """Tool interactions are properly stored in message.metadata in database"""
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         user_query = "Find shopping malls in Los Angeles"
 
@@ -198,7 +198,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 
@@ -208,7 +208,7 @@ class TestAgentToolCalling:
             conversation_id=conv.id,
             role=MessageRole.AGENT,
             content=response_text,
-            metadata=metadata,
+            tool_metadata=metadata,
         )
         await session.commit()
 
@@ -222,20 +222,22 @@ class TestAgentToolCalling:
         persisted_msg = agent_messages_after[0]
 
         # Verify metadata persisted to JSONB column
-        assert persisted_msg.metadata is not None, "Metadata should be stored in DB"
         assert (
-            "tool_interactions" in persisted_msg.metadata
+            persisted_msg.tool_metadata is not None
+        ), "Metadata should be stored in DB"
+        assert (
+            "tool_interactions" in persisted_msg.tool_metadata
         ), "Should have tool_interactions in DB"
         assert (
-            "iteration_count" in persisted_msg.metadata
+            "iteration_count" in persisted_msg.tool_metadata
         ), "Should have iteration_count in DB"
         assert isinstance(
-            persisted_msg.metadata["tool_interactions"], list
+            persisted_msg.tool_metadata["tool_interactions"], list
         ), "tool_interactions should be a list in DB"
 
         # Validate tool interaction structure in DB
-        if len(persisted_msg.metadata["tool_interactions"]) > 0:
-            tool_interaction = persisted_msg.metadata["tool_interactions"][0]
+        if len(persisted_msg.tool_metadata["tool_interactions"]) > 0:
+            tool_interaction = persisted_msg.tool_metadata["tool_interactions"][0]
             assert "type" in tool_interaction, "Tool interaction should have type"
             assert tool_interaction["type"] in [
                 "tool_use",
@@ -245,11 +247,11 @@ class TestAgentToolCalling:
     async def test_no_tool_needed(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """Agent responds without tools for simple conversational queries"""
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         # Simple conversational query
         user_query = "Hello, how are you today?"
@@ -258,7 +260,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 
@@ -273,11 +275,11 @@ class TestAgentToolCalling:
     async def test_tool_input_validation(
         self,
         session: AsyncSession,
-        test_user: User,
+        test_user_sarah: User,
         settings,
     ):
         """Test that tool input validation works correctly"""
-        conv = await conversation_crud.create_conversation(session, test_user.id)
+        conv = await conversation_crud.create_conversation(session, test_user_sarah.id)
 
         # Query that should trigger search_places with valid inputs
         user_query = "Search for coffee shops near downtown San Francisco"
@@ -286,7 +288,7 @@ class TestAgentToolCalling:
         response_text, metadata = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
-            user=test_user,
+            user=test_user_sarah,
             session=session,
         )
 

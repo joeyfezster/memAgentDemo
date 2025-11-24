@@ -12,7 +12,7 @@ type ChatMessage = {
   id: string;
   sender: "user" | "assistant";
   text: string;
-  metadata?: Message["metadata"];
+  tool_metadata?: Message["tool_metadata"];
 };
 
 type ChatWindowProps = {
@@ -54,7 +54,7 @@ export default function ChatWindow({
             id: msg.id,
             sender: msg.role as "user" | "assistant",
             text: msg.content,
-            metadata: msg.metadata,
+            tool_metadata: msg.tool_metadata,
           }),
         );
         setMessages(chatMessages);
@@ -88,14 +88,14 @@ export default function ChatWindow({
 
     const userMessageText = input;
     const tempId = `temp-${Date.now()}`;
-    const userMessage: ChatMessage = {
+    const optimisticMessage: ChatMessage = {
       id: tempId,
       sender: "user",
       text: userMessageText,
-      metadata: null,
+      tool_metadata: null,
     };
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [...current, optimisticMessage]);
     setInput("");
     setError(null);
     setIsSending(true);
@@ -115,13 +115,13 @@ export default function ChatWindow({
             id: response.user_message.id,
             sender: "user",
             text: response.user_message.content,
-            metadata: response.user_message.metadata,
+            tool_metadata: response.user_message.tool_metadata,
           },
           {
             id: response.assistant_message.id,
             sender: "assistant",
             text: response.assistant_message.content,
-            metadata: response.assistant_message.metadata,
+            tool_metadata: response.assistant_message.tool_metadata,
           },
         ];
       });
@@ -186,10 +186,10 @@ export default function ChatWindow({
               </span>
 
               {/* Render tool interactions if present */}
-              {message.metadata?.tool_interactions &&
-                message.metadata.tool_interactions.length > 0 && (
-                  <div className="chat__tool-interactions">
-                    {message.metadata.tool_interactions.map(
+              {message.tool_metadata?.tool_interactions &&
+                message.tool_metadata.tool_interactions.length > 0 && (
+                  <div className="tool-interactions">
+                    {message.tool_metadata.tool_interactions.map(
                       (interaction, idx) => (
                         <ToolInteraction key={idx} interaction={interaction} />
                       ),

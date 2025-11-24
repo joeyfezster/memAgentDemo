@@ -18,8 +18,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("message", sa.Column("metadata", JSONB, nullable=True))
+    op.add_column("message", sa.Column("tool_metadata", JSONB, nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("message", "metadata")
+    op.drop_column("message", "tool_metadata")
