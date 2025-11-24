@@ -191,13 +191,13 @@ export default function ChatWindow({
               {message.sender === "user" &&
                 index + 1 < messages.length &&
                 messages[index + 1].tool_metadata?.tool_interactions &&
-                messages[index + 1].tool_metadata.tool_interactions.length >
-                  0 && (
+                (messages[index + 1].tool_metadata?.tool_interactions?.length ??
+                  0) > 0 && (
                   <div
                     className="tool-interactions"
                     key={`tools-${message.id}`}
                   >
-                    {messages[index + 1].tool_metadata.tool_interactions.map(
+                    {messages[index + 1].tool_metadata?.tool_interactions?.map(
                       (interaction, idx) => (
                         <ToolInteraction key={idx} interaction={interaction} />
                       ),
