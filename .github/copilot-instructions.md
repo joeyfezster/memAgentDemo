@@ -56,7 +56,9 @@
 ## Code Style
 
 - Avoid writing comments at all costs. If you see comments, refactor the code until they are not needed.
-- Typing is required for all functions, methods input and output. Use Python's built-in typing module, create custom types when needed.
+- **Exception**: Test functions should have a one-line docstring describing what they validate. This serves as living documentation.
+- Typing is required for all functions, methods input and output. Use Python's built-in typing module, create custom types when needed. The idea here is to make function signatures as informative as possible.
+- Return types must be explicit and descriptive. Never return collection types like`list[dict]` or `dict` - create proper dataclasses or Pydantic models that clearly communicate what the function returns.
 
 ## Code Quality
 
@@ -83,7 +85,9 @@
 - These tests are SKIPPED by default locally to avoid API credit exhaustion
 - To run ALL tests including expensive ones: `pytest` (default in CI)
 - To skip expensive tests locally: `pytest -m "not expensive"` (recommended for local dev)
-- Files with expensive tests: `backend/tests/test_agent_tools.py` (all 7 tests make real Claude API calls)
+- **When running expensive tests, use fail-fast mode to stop on first failure:** `pytest tests/test_agent_memory.py -v -x`
+- **Minimize running expensive tests - only run when validating changes to agent/memory functionality**
+- Files with expensive tests: `backend/tests/test_agent_tools.py` (all 7 tests make real Claude API calls), `backend/tests/test_agent_memory.py` (5 memory retrieval tests)
 
 ### Viewing E2E Test Results
 

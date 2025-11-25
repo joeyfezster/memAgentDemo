@@ -8,7 +8,7 @@ from app.models.user import User
 from app.services.agent_service import AgentService
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.expensive]
-TEST_MODEL = "claude-opus-4-1-20250805"
+TEST_MODEL = "claude-sonnet-4-5-20250929"
 
 
 @pytest.fixture

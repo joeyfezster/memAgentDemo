@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.tools.base import ToolRegistry
 from app.agent.tools.placer_tools import PLACER_TOOLS
+from app.agent.tools.memory_tools import MEMORY_TOOLS
 from app.core import agent_config
 from app.core.config import Settings
 from app.core.llm_types import AnthropicStopReason, is_stop_reason_legal
@@ -20,6 +21,8 @@ class AgentService:
 
         self.tool_registry = ToolRegistry()
         for tool in PLACER_TOOLS:
+            self.tool_registry.register(tool)
+        for tool in MEMORY_TOOLS:
             self.tool_registry.register(tool)
 
     async def generate_response(
@@ -136,7 +139,10 @@ class AgentService:
 
                     try:
                         result = await self.tool_registry.execute(
-                            tool_use.name, **tool_use.input
+                            tool_use.name,
+                            session=session,
+                            user_id=user.id,
+                            **tool_use.input,
                         )
 
                         is_error = isinstance(result, dict) and "error" in result
