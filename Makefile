@@ -82,7 +82,7 @@ test: test-backend test-frontend
 
 test-backend:
 	@echo "Running backend tests in Docker..."
-	$(DOCKER_COMPOSE) run --rm -e TEST_DB_HOST=postgres backend pytest
+	$(DOCKER_COMPOSE) run --rm -e TEST_DB_HOST=postgres backend pytest -m "not expensive"
 
 test-frontend:
 	$(call run_frontend,pnpm test -- --run)

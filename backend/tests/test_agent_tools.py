@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.crud import conversation as conversation_crud
-from app.models.types import MessageRole
+from app.models.types import MessageRole, AnthropicContentBlockType
 from app.models.user import User
 from app.services.agent_service import AgentService
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.expensive]
-TEST_MODEL = "claude-opus-4-1-20250805"
+TEST_MODEL = "claude-sonnet-4-5-20250929"
 
 
 @pytest.fixture
@@ -66,18 +66,18 @@ class TestAgentToolCalling:
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
+        response = await agent_service.generate_response_with_tools(
             conversation_id=conv.id,
             user_message_content=user_query,
             user=test_user_sarah,
             session=session,
         )
 
-        assert response_text, "Should get a response"
-        assert metadata["stop_reason"] in ["end_turn", "max_iterations"]
-        assert metadata["iteration_count"] >= 1
+        assert response.text, "Should get a response"
+        assert response.metadata.stop_reason in ["end_turn", "max_iterations"]
+        assert response.metadata.iteration_count >= 1
 
-        response_lower = response_text.lower()
+        response_lower = response.text.lower()
         assert any(
             word in response_lower
             for word in [
@@ -90,19 +90,23 @@ class TestAgentToolCalling:
             ]
         ), "Response should mention search results"
 
-        tool_interactions = metadata["tool_interactions"]
+        tool_interactions = response.metadata.tool_interactions
         assert len(tool_interactions) > 0, "Should have tool interactions"
 
-        tool_uses = [t for t in tool_interactions if t["type"] == "tool_use"]
+        tool_uses = [
+            t for t in tool_interactions if t.type == AnthropicContentBlockType.TOOL_USE
+        ]
         assert any(
-            t["name"] == "search_places" for t in tool_uses
+            t.name == "search_places" for t in tool_uses
         ), "Should call search_places tool"
 
-        tool_results = [t for t in tool_interactions if t["type"] == "tool_result"]
+        tool_results = [
+            t
+            for t in tool_interactions
+            if t.type == AnthropicContentBlockType.TOOL_RESULT
+        ]
         assert len(tool_results) > 0, "Should have tool results"
-        assert not any(
-            t.get("is_error") for t in tool_results
-        ), "Should not have errors"
+        assert not any(t.is_error for t in tool_results), "Should not have errors"
 
     async def test_multi_tool_sequence(
         self,
@@ -165,7 +169,11 @@ class TestAgentToolCalling:
         assert response_text, "Should get a response even if tool fails"
 
         tool_interactions = metadata["tool_interactions"]
-        tool_results = [t for t in tool_interactions if t["type"] == "tool_result"]
+        tool_results = [
+            t
+            for t in tool_interactions
+            if t["type"] == AnthropicContentBlockType.TOOL_RESULT
+        ]
 
         assert any(
             t.get("is_error") for t in tool_results

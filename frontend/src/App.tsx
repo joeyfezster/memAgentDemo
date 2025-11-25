@@ -89,6 +89,19 @@ function App() {
     void loadConversations();
   }, [auth, currentConversationId]);
 
+  const refreshConversations = async () => {
+    if (!auth?.token || !auth?.user) {
+      return;
+    }
+
+    try {
+      const response = await getConversations(auth.token);
+      setConversations(response.conversations);
+    } catch (loadError) {
+      console.error("Failed to refresh conversations", loadError);
+    }
+  };
+
   const handleLogin = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
@@ -162,6 +175,7 @@ function App() {
             token={auth!.token}
             conversationId={currentConversationId}
             onLogout={handleLogout}
+            onConversationUpdated={refreshConversations}
           />
         </div>
       ) : (

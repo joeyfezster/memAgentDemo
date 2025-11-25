@@ -13,7 +13,7 @@ from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.crud import conversation as conversation_crud
 from app.db.session import get_session
-
+from app.models.types import MessageRole, SSEEventType
 from app.models.user import User
 from app.schemas.chat import (
     ChatMessage,
@@ -22,7 +22,6 @@ from app.schemas.chat import (
     ConversationSchema,
     CreateConversationResponse,
     MessageListResponse,
-    MessageRole,
     MessageSchema,
     SendMessageRequest,
     SendMessageResponse,
@@ -118,18 +117,26 @@ async def send_message_to_conversation(
 
     settings = get_settings()
     agent_service = AgentService(settings)
-    (
-        assistant_reply,
-        assistant_metadata,
-    ) = await agent_service.generate_response_with_tools(
+    agent_response = await agent_service.stream_response_with_tools(
         conversation_id, payload.content, current_user, session
     )
+
+    metadata_dict = {
+        "tool_interactions": [
+            vars(ti) for ti in agent_response.metadata.tool_interactions
+        ],
+        "iteration_count": agent_response.metadata.iteration_count,
+        "stop_reason": agent_response.metadata.stop_reason,
+    }
+    if agent_response.metadata.warning:
+        metadata_dict["warning"] = agent_response.metadata.warning
+
     assistant_message_dict = await conversation_crud.add_message_to_conversation(
         session,
         conversation_id=conversation_id,
         role=MessageRole.AGENT.value,
-        content=assistant_reply,
-        tool_metadata=assistant_metadata,
+        content=agent_response.text,
+        tool_metadata=metadata_dict,
     )
 
     await _ensure_conversation_title(
@@ -172,21 +179,59 @@ async def stream_message_to_conversation(
 
     async def event_stream() -> AsyncIterator[str]:
         yield _format_sse(
-            {"type": "user_message", "message": _serialize_message(user_message)}
+            {
+                "type": SSEEventType.USER_MESSAGE,
+                "message": _serialize_message(user_message),
+            }
         )
 
-        assistant_chunks: list[str] = []
-        async for chunk in agent_service.stream_response(
+        assistant_text_parts = []
+        assistant_metadata = None
+
+        async for event in agent_service.stream_response_with_tools(
             conversation_id, payload.content, current_user, session
         ):
-            assistant_chunks.append(chunk)
-            yield _format_sse({"type": "chunk", "content": chunk})
+            print(f"[STREAM EVENT] {event}")
+            if SSEEventType.TEXT in event:
+                assistant_text_parts.append(event["content"])
+                yield _format_sse(
+                    {"type": SSEEventType.CHUNK, "content": event["content"]}
+                )
+            elif SSEEventType.TOOL_USE_START in event:
+                print(f"[TOOL USE START] Sending: {event}")
+                yield _format_sse(
+                    {
+                        "type": SSEEventType.TOOL_USE_START,
+                        **{
+                            k: v
+                            for k, v in event.items()
+                            if k != SSEEventType.TOOL_USE_START
+                        },
+                    }
+                )
+            elif SSEEventType.TOOL_RESULT in event:
+                print(f"[TOOL RESULT] Sending: {event}")
+                yield _format_sse(
+                    {
+                        "type": SSEEventType.TOOL_RESULT,
+                        **{
+                            k: v
+                            for k, v in event.items()
+                            if k != SSEEventType.TOOL_RESULT
+                        },
+                    }
+                )
+            elif SSEEventType.COMPLETE in event:
+                assistant_metadata = event["metadata"]
+
+        assistant_reply = "".join(assistant_text_parts) if assistant_text_parts else ""
 
         assistant_message_dict = await conversation_crud.add_message_to_conversation(
             session,
             conversation_id=conversation_id,
             role=MessageRole.AGENT.value,
-            content="".join(assistant_chunks),
+            content=assistant_reply,
+            tool_metadata=assistant_metadata,
         )
         assistant_message = MessageSchema.from_dict(
             conversation_id, assistant_message_dict
@@ -196,9 +241,12 @@ async def stream_message_to_conversation(
             session, conversation_id, current_user.id, payload.content
         )
 
+        print(f"[FINAL MESSAGE] assistant_message: {assistant_message}")
+        print(f"[FINAL MESSAGE] tool_metadata: {assistant_metadata}")
+
         yield _format_sse(
             {
-                "type": "assistant_message",
+                "type": SSEEventType.ASSISTANT_MESSAGE,
                 "message": _serialize_message(assistant_message),
             }
         )
@@ -221,7 +269,7 @@ async def _ensure_conversation_title(
         return
 
     message_count = await conversation_crud.get_message_count(session, conversation_id)
-    if message_count <= 2 or conversation.title:
+    if message_count < 2 or conversation.title:
         return
 
     words = user_content.split()[:4]

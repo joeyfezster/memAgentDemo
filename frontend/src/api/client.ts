@@ -96,10 +96,27 @@ type StreamedAssistantMessageEvent = {
   message: Message;
 };
 
+type StreamedToolUseStartEvent = {
+  type: "tool_use_start";
+  tool_name: string;
+  tool_id: string;
+  input: Record<string, unknown>;
+};
+
+type StreamedToolResultEvent = {
+  type: "tool_result";
+  tool_id: string;
+  tool_name: string;
+  result: unknown;
+  is_error: boolean;
+};
+
 export type StreamedChatEvent =
   | StreamedChunkEvent
   | StreamedUserMessageEvent
-  | StreamedAssistantMessageEvent;
+  | StreamedAssistantMessageEvent
+  | StreamedToolUseStartEvent
+  | StreamedToolResultEvent;
 
 export async function login(
   email: string,

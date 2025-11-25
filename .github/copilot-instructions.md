@@ -56,7 +56,9 @@
 ## Code Style
 
 - Avoid writing comments at all costs. If you see comments, refactor the code until they are not needed.
-- Typing is required for all functions, methods input and output. Use Python's built-in typing module, create custom types when needed.
+- **Exception**: Test functions should have a one-line docstring describing what they validate. This serves as living documentation.
+- Typing is required for all functions, methods input and output. Use Python's built-in typing module, create custom types when needed. The idea here is to make function signatures as informative as possible.
+- Return types must be explicit and descriptive. Never return collection types like`list[dict]` or `dict` - create proper dataclasses or Pydantic models that clearly communicate what the function returns.
 
 ## Code Quality
 

@@ -1,6 +1,9 @@
 import os
 
 MODEL_NAME = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "4096"))
+MAX_ITERATIONS = int(os.getenv("AGENT_MAX_ITERATIONS", "10"))
+MAX_ITERATIONS_STREAMING = int(os.getenv("AGENT_MAX_ITERATIONS_STREAMING", "5"))
 
 BASE_SYSTEM_PROMPT = """You are a helpful AI assistant for Placer Intelligence (Pi), a location analytics platform.
 
