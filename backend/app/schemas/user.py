@@ -11,7 +11,6 @@ class UserBase(BaseModel):
     id: str
     email: EmailStr
     display_name: str
-    persona_handle: str
     role: str | None = None
     created_at: datetime
     updated_at: datetime

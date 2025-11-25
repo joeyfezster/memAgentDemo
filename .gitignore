@@ -44,3 +44,4 @@ reports/
 # uv / poetry lock backups
 *.lock.bak
 frontend/.vite/
+backend/clone.env

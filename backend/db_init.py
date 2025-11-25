@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""
+Database initialization script.
+Runs alembic migrations and seeds personas against the database.
+Should be executed once during deployment, not on every container start.
+"""
+
+import sys
+import os
+import asyncio
+from pathlib import Path
+import sqlalchemy as sa
+
+sys.path.insert(0, str(Path(__file__).parent))
+
+from alembic.config import Config
+from alembic.command import upgrade
+from app.db.session import get_session_factory, init_engine
+from app.db.seed import seed_user_profiles
+from asyncpg.exceptions import UndefinedTableError
+from sqlalchemy.exc import ProgrammingError
+
+
+async def nuke_database() -> bool:
+    """Drop ALL tables to start from scratch using CASCADE."""
+    print("Nuking database (dropping all tables with CASCADE)...")
+
+    try:
+        from app.db.session import get_engine
+
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(sa.text("DROP SCHEMA public CASCADE"))
+            await conn.execute(sa.text("CREATE SCHEMA public"))
+            await conn.execute(sa.text("GRANT ALL ON SCHEMA public TO postgres"))
+            await conn.execute(sa.text("GRANT ALL ON SCHEMA public TO public"))
+
+        print("✓ Database nuked (all tables dropped)")
+        return True
+    except Exception as e:
+        print(f"✗ Ignoring Error during nuke: {e}", file=sys.stderr)
+        return True
+
+
+def run_migrations(database_url: str) -> bool:
+    """Run alembic migrations synchronously."""
+    print("Running database migrations...")
+
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+
+    try:
+        upgrade(alembic_cfg, "head")
+        print("✓ Migrations completed successfully")
+        return True
+    except Exception as e:
+        print(f"✗ Error during migrations: {e}", file=sys.stderr)
+        return False
+
+
+async def run_seeding() -> bool:
+    """Seed personas and conversations."""
+    print("Seeding personas and conversations...")
+
+    try:
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            await seed_user_profiles(session)
+        print("✓ Seeding completed successfully")
+        return True
+    except ProgrammingError as e:
+        if isinstance(e.orig, UndefinedTableError) or (
+            hasattr(e.orig, "__cause__")
+            and isinstance(e.orig.__cause__, UndefinedTableError)
+        ):
+            print(
+                "✗ Error during seeding: Tables don't exist. Migrations may have failed.",
+                file=sys.stderr,
+            )
+            return False
+        print(f"✗ Error during seeding: {e}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"✗ Error during seeding: {e}", file=sys.stderr)
+        return False
+
+
+def run_initialization() -> int:
+    print("Starting database initialization...")
+
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("✗ DATABASE_URL environment variable not set", file=sys.stderr)
+        return 1
+
+    try:
+        # Nuke
+        init_engine()
+        if not asyncio.run(nuke_database()):
+            return 1
+
+        # Migrations (run synchronously in between)
+        if not run_migrations(database_url):
+            return 1
+
+        # Seed
+        init_engine()
+        if not asyncio.run(run_seeding()):
+            return 1
+    except Exception as e:
+        print(f"✗ Error during initialization: {e}", file=sys.stderr)
+        return 1
+
+    print("✓ Database initialization completed successfully")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(run_initialization())

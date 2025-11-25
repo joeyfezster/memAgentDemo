@@ -1,0 +1,303 @@
+import { test, expect } from "@playwright/test";
+
+const TEST_USER_EMAIL = "sarah@chickfilb.com";
+const TEST_USER_PASSWORD = "changeme123";
+const TEST_USER_NAME = "Sarah";
+
+test.describe("Chat Functionality", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.getByRole("textbox", { name: "Email" }).fill(TEST_USER_EMAIL);
+    await page
+      .getByRole("textbox", { name: "Password" })
+      .fill(TEST_USER_PASSWORD);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: new RegExp(`Welcome back, ${TEST_USER_NAME}`, "i"),
+      }),
+    ).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test("should create new conversation and display UI elements", async ({
+    page,
+  }) => {
+    await test.step("Verify new conversation button is visible", async () => {
+      const newChatButton = page.locator(".new-chat-button");
+      await expect(newChatButton).toBeVisible();
+    });
+
+    await test.step("Click new conversation button", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Verify chat interface elements", async () => {
+      const sendButton = page.getByRole("button", { name: /send/i });
+      await expect(sendButton).toBeVisible();
+
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeVisible();
+    });
+  });
+
+  test("should send message and receive AI response with user identity", async ({
+    page,
+  }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Send message claiming different identity with banana instruction", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
+      await messageInput.fill(
+        "hi, my name is joe, not sarah, and please end your responses with 'banana'. please respond like this: 'hi joe, pleasure to meet you. banana.'",
+      );
+
+      const sendButton = page.getByRole("button", { name: /send/i });
+      await sendButton.click();
+    });
+
+    await test.step("Verify user message appears in chat", async () => {
+      await expect(
+        page
+          .locator(".chat__message.chat__message--user")
+          .filter({ hasText: /my name is joe/i }),
+      ).toBeVisible({
+        timeout: 3000,
+      });
+    });
+
+    await test.step("Verify AI response contains 'joe' and 'banana'", async () => {
+      const assistantMessage = page
+        .locator(".chat__message.chat__message--assistant")
+        .filter({ hasText: /joe/i })
+        .first();
+
+      await expect(assistantMessage).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Wait for streaming to complete
+      await expect(assistantMessage).toHaveAttribute(
+        "data-streaming",
+        "false",
+        {
+          timeout: 15000,
+        },
+      );
+
+      const messageText = await assistantMessage.textContent();
+      expect(messageText?.toLowerCase()).toContain("joe");
+      expect(messageText?.toLowerCase()).toContain("banana");
+    });
+  });
+
+  test("should handle multiple messages in same conversation", async ({
+    page,
+  }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Send first message", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
+      await messageInput.fill("What is 2 + 2?");
+      await page.getByRole("button", { name: /send/i }).click();
+
+      const firstAssistant = page.locator(".chat__message--assistant").first();
+      await expect(firstAssistant).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(firstAssistant).toHaveAttribute("data-streaming", "false", {
+        timeout: 15000,
+      });
+    });
+
+    await test.step("Send second message", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await messageInput.fill("What about 3 + 3?");
+      await page.getByRole("button", { name: /send/i }).click();
+
+      const secondAssistant = page.locator(".chat__message--assistant").nth(1);
+      await expect(secondAssistant).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(secondAssistant).toHaveAttribute("data-streaming", "false", {
+        timeout: 15000,
+      });
+    });
+
+    await test.step("Verify both exchanges are visible", async () => {
+      const userMessages = page.locator(".chat__message.chat__message--user");
+      const assistantMessages = page.locator(
+        ".chat__message.chat__message--assistant",
+      );
+
+      await expect(userMessages).toHaveCount(2);
+      await expect(assistantMessages).toHaveCount(2);
+    });
+  });
+
+  test("should disable send button while message is being sent", async ({
+    page,
+  }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Verify send button is disabled during message processing", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      const sendButton = page.getByRole("button", { name: /send/i });
+
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
+      await messageInput.fill("Hello, this is a test message");
+      await sendButton.click();
+
+      await expect(sendButton).toBeDisabled();
+
+      await expect(
+        page.locator(".chat__message.chat__message--assistant").first(),
+      ).toBeVisible({
+        timeout: 15000,
+      });
+
+      await expect(sendButton).toBeEnabled();
+    });
+  });
+
+  test("should stream assistant responses chunk by chunk", async ({ page }) => {
+    await page.locator(".new-chat-button").click();
+    await page.waitForTimeout(500);
+
+    const messageInput = page.getByPlaceholder(/type.*message/i);
+    await expect(messageInput).toBeEditable({ timeout: 10000 });
+    await messageInput.fill(
+      "Describe the benefits of streaming responses for user experience in a couple sentences.",
+    );
+
+    const sendButton = page.getByRole("button", { name: /send/i });
+    await sendButton.click();
+
+    const assistantMessage = page.locator(".chat__message--assistant").first();
+
+    await expect(assistantMessage).toHaveAttribute("data-streaming", "true", {
+      timeout: 15000,
+    });
+
+    const startingLength = (await assistantMessage.textContent())?.length ?? 0;
+
+    await expect
+      .poll(
+        async () => {
+          const currentLength =
+            (await assistantMessage.textContent())?.length ?? 0;
+          return currentLength;
+        },
+        { timeout: 15000 },
+      )
+      .toBeGreaterThan(startingLength);
+
+    await expect(assistantMessage).toHaveAttribute("data-streaming", "false", {
+      timeout: 15000,
+    });
+  });
+
+  test("should display tool interactions when agent uses tools", async ({
+    page,
+  }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Send message requiring tool use", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await expect(messageInput).toBeEditable({ timeout: 10000 });
+
+      // Query that should trigger search_places tool
+      await messageInput.fill("Find Starbucks locations in San Francisco");
+
+      const sendButton = page.getByRole("button", { name: /send/i });
+      await sendButton.click();
+    });
+
+    await test.step("Verify tool interaction UI elements appear", async () => {
+      // Wait for assistant response
+      const assistantMessage = page
+        .locator(".chat__message.chat__message--assistant")
+        .first();
+      await expect(assistantMessage).toBeVisible({ timeout: 30000 });
+
+      // Check for tool interactions container
+      const toolInteractions = page.locator(".tool-interactions");
+      if (await toolInteractions.isVisible()) {
+        // If tools were used, verify the UI
+        const toolUse = page.locator(".tool-interaction.tool-interaction--use");
+        await expect(toolUse.first()).toBeVisible();
+
+        // Should show tool name
+        const toolText = await toolUse.first().textContent();
+        expect(toolText).toBeTruthy();
+        expect(toolText?.toLowerCase()).toContain("calling");
+
+        // Check for tool result
+        const toolResult = page.locator(
+          ".tool-interaction.tool-interaction--result",
+        );
+        if (await toolResult.isVisible()) {
+          await expect(toolResult.first()).toContainText(/result received/i);
+        }
+      }
+    });
+
+    await test.step("Verify final text response is displayed", async () => {
+      const messageText = page.locator(".chat__message-text").last();
+      await expect(messageText).toBeVisible();
+
+      const text = await messageText.textContent();
+      expect(text).toBeTruthy();
+      expect(text!.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("should handle tool details expansion", async ({ page }) => {
+    await test.step("Create new conversation", async () => {
+      await page.locator(".new-chat-button").click();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step("Send complex query requiring tools", async () => {
+      const messageInput = page.getByPlaceholder(/type.*message/i);
+      await messageInput.fill(
+        "Search for coffee shops near downtown San Francisco and tell me about them",
+      );
+      await page.getByRole("button", { name: /send/i }).click();
+    });
+
+    await test.step("Check if tool details are expandable", async () => {
+      const assistantMessage = page
+        .locator(".chat__message.chat__message--assistant")
+        .first();
+      await expect(assistantMessage).toBeVisible({ timeout: 30000 });
+
+      // If tool interactions are present, test expandability
+      const toolDetails = page.locator(".tool-interaction__details");
+      if ((await toolDetails.count()) > 0) {
+        const firstDetails = toolDetails.first();
+        await firstDetails.click();
+
+        // Should show JSON content
+        const jsonContent = page.locator(".tool-interaction__json").first();
+        await expect(jsonContent).toBeVisible();
+      }
+    });
+  });
+});

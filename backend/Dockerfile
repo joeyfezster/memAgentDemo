@@ -1,24 +1,26 @@
 FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    POETRY_VERSION=1.8.4
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev curl postgresql && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install "poetry==${POETRY_VERSION}"
+COPY backend/requirements.txt backend/requirements-dev.txt ./
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements-dev.txt
 
-COPY pyproject.toml poetry.lock ./
-RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --with dev --no-root
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/db_init.py ./db_init.py
+COPY docs /docs
 
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini ./alembic.ini
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8000
 

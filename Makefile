@@ -1,15 +1,15 @@
 SHELL := /bin/bash
-DOCKER_COMPOSE := docker compose -f infra/docker-compose.yml
+CLONE_ENV := $(wildcard backend/clone.env)
+DOCKER_COMPOSE := docker compose -f infra/docker-compose.yml --env-file backend/.env $(if $(CLONE_ENV),--env-file $(CLONE_ENV),)
 HAS_DOCKER := $(shell command -v docker >/dev/null 2>&1 && echo 1 || echo 0)
 USE_DOCKER ?= $(HAS_DOCKER)
 ROOT_DIR := $(shell pwd)
 VENV_PATH := .venv
 PYTHON := $(VENV_PATH)/bin/python
 PIP := $(VENV_PATH)/bin/pip
-POETRY := $(ROOT_DIR)/$(VENV_PATH)/bin/poetry
 PRECOMMIT := $(ROOT_DIR)/$(VENV_PATH)/bin/pre-commit
 
-.PHONY: bootstrap activate up down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate test-letta
+.PHONY: bootstrap activate up up-detached down logs lint lint-backend lint-frontend test test-backend test-frontend format backend-shell frontend-shell migrate
 
 bootstrap:
 	@if [ ! -d "$(VENV_PATH)" ]; then \
@@ -19,13 +19,13 @@ bootstrap:
 		exit 1; \
 	fi
 	@$(PIP) install --upgrade pip
-	@$(PIP) install pre-commit poetry==1.8.4
+	@$(PIP) install pre-commit
 	@"$(PRECOMMIT)" install
 	@corepack enable
 	@[ -f backend/.env ] || cp backend/.env.example backend/.env
 	@[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
 	@if [ "$(USE_DOCKER)" != "1" ]; then \
-		cd backend && "$(POETRY)" install --with dev; \
+		cd backend && $(PIP) install -r requirements-dev.txt; \
 	fi
 	@if [ "$(USE_DOCKER)" != "1" ]; then \
 		cd frontend && pnpm install; \
@@ -44,6 +44,9 @@ activate:
 
 up:
 	$(DOCKER_COMPOSE) up --build
+
+up-detached:
+	$(DOCKER_COMPOSE) up --build -d
 
 down:
 	$(DOCKER_COMPOSE) down --remove-orphans
@@ -70,7 +73,7 @@ endef
 lint: lint-backend lint-frontend
 
 lint-backend:
-	$(call run_backend,"$(POETRY)" run ruff check app tests)
+	$(call run_backend,ruff check app tests)
 
 lint-frontend:
 	$(call run_frontend,pnpm lint)
@@ -78,7 +81,8 @@ lint-frontend:
 test: test-backend test-frontend
 
 test-backend:
-	$(call run_backend,poetry run pytest)
+	@echo "Running backend tests in Docker..."
+	$(DOCKER_COMPOSE) run --rm -e TEST_DB_HOST=postgres backend pytest -m "not expensive"
 
 test-frontend:
 	$(call run_frontend,pnpm test -- --run)
@@ -93,7 +97,4 @@ frontend-shell:
 	$(DOCKER_COMPOSE) run --rm frontend sh
 
 migrate:
-	$(call run_backend,poetry run alembic upgrade head)
-
-test-letta:
-	@cd backend && source ../.venv/bin/activate && "$(POETRY)" run pytest tests/test_letta_integration.py -v
+	$(call run_backend,alembic upgrade head)

@@ -19,7 +19,7 @@ export default function Sidebar({
       <button className="new-chat-button" onClick={onNewChat}>
         + New Chat
       </button>
-      <div className="conversation-list">
+      <div className="conversation-list" data-testid="conversation-list">
         {conversations.map((conv) => (
           <div
             key={conv.id}
@@ -27,6 +27,7 @@ export default function Sidebar({
               conv.id === activeConversationId ? "active" : ""
             }`}
             onClick={() => onSelectConversation(conv.id)}
+            data-testid="conversation-item"
           >
             <div className="conversation-title">
               {conv.title || "New conversation"}

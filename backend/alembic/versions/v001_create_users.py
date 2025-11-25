@@ -1,6 +1,6 @@
 """create users table
 
-Revision ID: create_users
+Revision ID: v001
 Revises:
 Create Date: 2025-02-14
 """
@@ -10,7 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "create_users"
+revision: str = "v001"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -22,7 +22,6 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), primary_key=True),
         sa.Column("email", sa.String(length=255), nullable=False, unique=True),
         sa.Column("display_name", sa.String(length=255), nullable=False),
-        sa.Column("persona_handle", sa.String(length=255), nullable=False),
         sa.Column("role", sa.String(length=255), nullable=True),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
         sa.Column(

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.message import MessageRole
+from app.models.types import MessageDict, MessageRole
 
 
 class ChatMessage(BaseModel):
@@ -22,7 +22,21 @@ class MessageSchema(BaseModel):
     conversation_id: str
     role: MessageRole
     content: str
+    tool_metadata: dict | None = None
     created_at: datetime
+
+    @classmethod
+    def from_dict(
+        cls, conversation_id: str, message_dict: MessageDict
+    ) -> MessageSchema:
+        return cls(
+            conversation_id=conversation_id,
+            id=message_dict.id,
+            role=MessageRole(message_dict.role),
+            content=message_dict.content,
+            tool_metadata=message_dict.tool_metadata,
+            created_at=message_dict.created_at,
+        )
 
 
 class ConversationSchema(BaseModel):

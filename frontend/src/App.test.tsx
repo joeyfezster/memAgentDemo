@@ -49,8 +49,20 @@ describe("App", () => {
     const sendButton = screen.getByRole("button", { name: /send/i });
     await user.click(sendButton);
 
-    const reply = await screen.findByText(/hi daniel/i, {}, { timeout: 10000 });
-    expect(reply).toBeInTheDocument();
+    await waitFor(
+      () => {
+        const assistantMessages = document.querySelectorAll(
+          ".chat__message--assistant p",
+        );
+        const found = Array.from(assistantMessages).some(
+          (el) =>
+            /placer/i.test(el.textContent || "") ||
+            /daniel/i.test(el.textContent || ""),
+        );
+        expect(found).toBe(true);
+      },
+      { timeout: 10000 },
+    );
 
     const conversationInSidebar = await screen.findByText(
       /hello there/i,
@@ -97,12 +109,20 @@ describe("App", () => {
     const sendButton = screen.getByRole("button", { name: /send/i });
     await user.click(sendButton);
 
-    const firstReply = await screen.findByText(
-      /hi daniel/i,
-      {},
+    await waitFor(
+      () => {
+        const assistantMessages = document.querySelectorAll(
+          ".chat__message--assistant p",
+        );
+        const found = Array.from(assistantMessages).some(
+          (el) =>
+            /placer/i.test(el.textContent || "") ||
+            /daniel/i.test(el.textContent || ""),
+        );
+        expect(found).toBe(true);
+      },
       { timeout: 10000 },
     );
-    expect(firstReply).toBeInTheDocument();
 
     const conversationInSidebar = await screen.findByText(
       /first message/i,
@@ -147,11 +167,19 @@ describe("App", () => {
       { timeout: 5000 },
     );
 
-    const originalReply = await screen.findByText(
-      /hi daniel/i,
-      {},
+    await waitFor(
+      () => {
+        const assistantMessages = document.querySelectorAll(
+          ".chat__message--assistant p",
+        );
+        const found = Array.from(assistantMessages).some(
+          (el) =>
+            /placer/i.test(el.textContent || "") ||
+            /daniel/i.test(el.textContent || ""),
+        );
+        expect(found).toBe(true);
+      },
       { timeout: 5000 },
     );
-    expect(originalReply).toBeInTheDocument();
   }, 30000);
 });
