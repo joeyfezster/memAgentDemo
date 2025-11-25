@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 
 class MessageRole(str, enum.Enum):
     USER = "user"
@@ -108,3 +110,43 @@ class AnthropicToolResult:
     tool_use_id: str
     content: str
     is_error: bool = False
+
+
+POIMention = tuple[str, str]  # conversation_id, message_id
+POIMentions = dict[str, list[POIMention]]
+
+
+class PlacerUserDatapoint(BaseModel):
+    pass
+
+
+class PlacerPOI(PlacerUserDatapoint):
+    place_id: str
+    place_name: str
+    notes: str | None = None
+    mentioned_in: POIMentions = Field(default_factory=dict)
+    added_at: str
+
+
+class MemoryFact(BaseModel):
+    id: str
+    content: str = Field(min_length=1, max_length=500)
+    added_at: str
+    source_conversation_id: str | None = None
+    source_message_id: str | None = None
+    is_active: bool = True
+
+
+class MemoryMetadata(BaseModel):
+    last_updated: str
+    total_facts: int
+    total_active_facts: int
+    total_pois: int
+    token_count: int
+    schema_version: str = "1.0"
+
+
+class MemoryDocument(BaseModel):
+    facts: list[MemoryFact] = Field(default_factory=list)
+    placer_user_datapoints: list[PlacerPOI] = Field(default_factory=list)
+    metadata: MemoryMetadata

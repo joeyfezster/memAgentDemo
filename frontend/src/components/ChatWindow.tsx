@@ -55,6 +55,7 @@ export default function ChatWindow({
     }
 
     setInput("");
+    setMessages([]);
     let cancelled = false;
 
     const loadMessages = async () => {

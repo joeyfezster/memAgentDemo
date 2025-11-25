@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from collections.abc import Generator
 from pathlib import Path
 
 project_root = Path(__file__).resolve().parents[1]
@@ -34,8 +33,17 @@ repo_root = project_root.parent
 load_dotenv(project_root / ".env")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def configure_test_environment() -> Generator[None, None, None]:
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an event loop for the entire test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def configure_test_environment() -> AsyncGenerator[None, None]:
+    """Configure test environment with proper async context."""
     # Use environment variable for database host, default to localhost for CI
     # In Docker/E2E tests, this can be set to "postgres"
     db_host = os.environ.get("TEST_DB_HOST", "localhost")
@@ -47,44 +55,42 @@ def configure_test_environment() -> Generator[None, None, None]:
 
     get_settings.cache_clear()
 
-    async def create_test_db() -> None:
-        admin_url = (
-            f"postgresql+asyncpg://postgres:postgres@{db_host}:{db_port}/postgres"
-        )
-        admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
-        async with admin_engine.begin() as conn:
-            await conn.execute(text("DROP DATABASE IF EXISTS memagent_test"))
-            await conn.execute(text("CREATE DATABASE memagent_test"))
-        await admin_engine.dispose()
+    # Create test database
+    admin_url = f"postgresql+asyncpg://postgres:postgres@{db_host}:{db_port}/postgres"
+    admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+    async with admin_engine.begin() as conn:
+        await conn.execute(text("DROP DATABASE IF EXISTS memagent_test"))
+        await conn.execute(text("CREATE DATABASE memagent_test"))
+    await admin_engine.dispose()
 
-    asyncio.run(create_test_db())
-
+    # Initialize engine with NullPool
     init_engine(poolclass=NullPool)
 
-    async def setup_db() -> None:
-        engine = get_engine()
-        async with engine.begin() as conn:
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            await conn.run_sync(Base.metadata.create_all)
-        await engine.dispose()
+    # Setup database schema and seed data
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
+    await engine.dispose()
 
-        init_engine(poolclass=NullPool)
-        engine = get_engine()
-        session_factory = get_session_factory()
-        async with session_factory() as session:
-            await seed_user_profiles(session)
-        await engine.dispose()
+    # Re-initialize and seed
+    init_engine(poolclass=NullPool)
+    engine = get_engine()
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        await seed_user_profiles(session)
+    await engine.dispose()
 
-    asyncio.run(setup_db())
-
+    # Final initialization for tests
     init_engine(poolclass=NullPool)
 
     yield
 
+    # Cleanup
     try:
         engine = get_engine()
         if engine:
-            engine.sync_engine.dispose(close=True)
+            await engine.dispose()
     except Exception:
         pass
     get_settings.cache_clear()
@@ -95,7 +101,10 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
     """Provide an async database session for tests."""
     session_factory = get_session_factory()
     async with session_factory() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 @pytest_asyncio.fixture(scope="function")

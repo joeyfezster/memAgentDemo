@@ -194,6 +194,7 @@ async def test_user_model_columns():
         "hashed_password",
         "created_at",
         "updated_at",
+        "memory_document",
     }
 
     assert (
