@@ -77,24 +77,26 @@ async def seed_conversations_for_user(
 ) -> None:
     from sqlalchemy import select
 
+    from app.db.persona_seeds import seed_conversations_for_daniel
+    from app.models.user import User
+
     now = datetime.now(UTC)
 
+    # Check if user already has ANY conversations (idempotent seeding)
+    existing_conversations = await session.execute(
+        select(Conversation).where(Conversation.user_id == user_id).limit(1)
+    )
+    if existing_conversations.scalars().first() is not None:
+        return  # User already has conversations, skip seeding
+
+    if "daniel" in user_email.lower():
+        user = await session.execute(select(User).where(User.id == user_id))
+        user_obj = user.scalar_one_or_none()
+        if user_obj:
+            await seed_conversations_for_daniel(session, user_obj)
+        return
+
     if "sarah" in user_email.lower():
-        seed_titles = [
-            "Site evaluation vs top comps",
-            "Cannibalization analysis for infill",
-            "Portfolio health check - Dallas market",
-        ]
-
-        existing_seed_conversations = await session.execute(
-            select(Conversation).where(
-                Conversation.user_id == user_id, Conversation.title.in_(seed_titles)
-            )
-        )
-
-        if existing_seed_conversations.scalars().first() is not None:
-            return
-
         conversation_1 = Conversation(
             user_id=user_id,
             title="Site evaluation vs top comps",
@@ -190,6 +192,8 @@ async def seed_user_profiles(session: AsyncSession) -> None:
     settings = get_settings()
     sarah_user_id = None
     sarah_email = None
+    daniel_user_id = None
+    daniel_email = None
 
     for profile in profiles:
         user = await get_user_by_email(session, profile.email)
@@ -201,6 +205,9 @@ async def seed_user_profiles(session: AsyncSession) -> None:
             if "sarah" in profile.email.lower():
                 sarah_user_id = user.id
                 sarah_email = user.email
+            elif "daniel" in profile.email.lower():
+                daniel_user_id = user.id
+                daniel_email = user.email
         else:
             new_user = User(
                 email=profile.email,
@@ -213,8 +220,14 @@ async def seed_user_profiles(session: AsyncSession) -> None:
             if "sarah" in profile.email.lower():
                 sarah_user_id = new_user.id
                 sarah_email = new_user.email
+            elif "daniel" in profile.email.lower():
+                daniel_user_id = new_user.id
+                daniel_email = new_user.email
 
     await session.commit()
 
     if sarah_user_id and sarah_email:
         await seed_conversations_for_user(session, sarah_user_id, sarah_email)
+
+    if daniel_user_id and daniel_email:
+        await seed_conversations_for_user(session, daniel_user_id, daniel_email)
