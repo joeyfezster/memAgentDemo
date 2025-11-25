@@ -118,7 +118,11 @@ async def send_message_to_conversation(
     settings = get_settings()
     agent_service = AgentService(settings)
     agent_response = await agent_service.stream_response_with_tools(
-        conversation_id, payload.content, current_user, session
+        conversation_id=conversation_id,
+        user_message_content=payload.content,
+        user=current_user,
+        session=session,
+        user_message_id=user_message_dict.id,
     )
 
     metadata_dict = {
@@ -189,7 +193,11 @@ async def stream_message_to_conversation(
         assistant_metadata = None
 
         async for event in agent_service.stream_response_with_tools(
-            conversation_id, payload.content, current_user, session
+            conversation_id=conversation_id,
+            user_message_content=payload.content,
+            user=current_user,
+            session=session,
+            user_message_id=user_message_dict.id,
         ):
             print(f"[STREAM EVENT] {event}")
             if SSEEventType.TEXT in event:

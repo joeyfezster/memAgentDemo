@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.tools.base import ToolRegistry
 from app.agent.tools.placer_tools import PLACER_TOOLS
 from app.agent.tools.memory_tools import MEMORY_TOOLS
+from app.agent.tools.user_memory_tools import USER_MEMORY_TOOLS
 from app.core import agent_config
 from app.core.config import Settings
 from app.core.llm_types import AnthropicStopReason
@@ -39,6 +40,8 @@ class AgentService:
             self.tool_registry.register(tool)
         for tool in MEMORY_TOOLS:
             self.tool_registry.register(tool)
+        for tool in USER_MEMORY_TOOLS:
+            self.tool_registry.register(tool)
 
     async def stream_response_with_tools(
         self,
@@ -46,6 +49,7 @@ class AgentService:
         user_message_content: str,
         user: User,
         session: AsyncSession,
+        user_message_id: str | None = None,
     ) -> AsyncIterator[dict]:
         """
         Stream response with ReAct tool orchestration using Claude's streaming API.
@@ -64,7 +68,17 @@ class AgentService:
             {"role": MessageRole.USER.value, "content": user_message_content}
         )
 
-        system_prompt = agent_config.build_system_prompt(user.display_name)
+        user_memory_text = None
+        if conversation.get_message_count() == 0:
+            from app.crud.user import get_user_memory
+
+            memory = await get_user_memory(session, user.id)
+            if memory.metadata.total_active_facts > 0 or memory.metadata.total_pois > 0:
+                user_memory_text = agent_config.format_user_memory(memory)
+
+        system_prompt = agent_config.build_system_prompt(
+            user.display_name, user_memory_text
+        )
         tool_definitions = self.tool_registry.get_anthropic_schemas()
 
         tool_interactions: list[ToolInteraction] = []
@@ -80,6 +94,8 @@ class AgentService:
                 tool_interactions,
                 session,
                 user.id,
+                conversation_id,
+                user_message_id,
             ):
                 yield event
 
@@ -118,6 +134,8 @@ class AgentService:
         tool_interactions: list[ToolInteraction],
         session: AsyncSession,
         user_id: int,
+        conversation_id: str,
+        user_message_id: str | None,
     ) -> AsyncIterator[dict]:
         """
         Execute one ReAct turn with streaming.
@@ -271,13 +289,14 @@ class AgentService:
             tool_results = []
             for tool_use_block in tool_use_blocks:
                 result, is_error = await self._execute_tool(
-                    tool_use_block["id"],
-                    tool_use_block["name"],
-                    tool_use_block["input"],
-                    session,
-                    user_id,
+                    tool_use_id=tool_use_block["id"],
+                    tool_name=tool_use_block["name"],
+                    tool_input=tool_use_block["input"],
+                    session=session,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_id=user_message_id,
                 )
-
                 yield {
                     SSEEventType.TOOL_RESULT: tool_use_block["name"],
                     "tool_id": tool_use_block["id"],
@@ -367,6 +386,8 @@ class AgentService:
         tool_input: dict,
         session: AsyncSession,
         user_id: int,
+        conversation_id: str | None = None,
+        message_id: str | None = None,
     ) -> tuple[dict, bool]:
         """
         Execute a single tool and return (result, is_error).
@@ -378,7 +399,13 @@ class AgentService:
             if not tool:
                 raise ValueError(f"Tool {tool_name} not found")
 
-            result = await tool.execute(session=session, user_id=user_id, **tool_input)
+            result = await tool.execute(
+                session=session,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=message_id,
+                **tool_input,
+            )
             is_error = isinstance(result, dict) and "error" in result
             return result, is_error
 

@@ -43,11 +43,12 @@
 
 ### Agent Model
 
-1. The conversation history is passed completely as context to the LLM for each turn, with no summarization or trimming for now. One way to address this could be a clever summarization strategy for conversation with messages that go beyond some threshold
+1. The conversation history is passed completely as context to the LLM for each turn, with no summarization, compaction, or trimming for now. One way to address this could be a clever summarization strategy for conversation with messages that go beyond some threshold. this would requrie updating the ReAct orchestration loop to re-insert the system prompt with the summary.
 
 ### Memory Model
 
-1. A basic keyword-based retrieval tool has been implemented, and an embedding-based retrieval tool is in progress. Further retrieval strategies could be added.
+1. A basic keyword-based retrieval tool has been implemented, and an embedding-based retrieval tool is in scoped out but optional. Further retrieval strategies could be added.
+1. A per-user memory document with a structured format and tools for read/write are there. some gaps remain with it: Eviction to longer-term storage, locking strategies for concurrent updates.
 
 ### Cost Model
 
