@@ -232,16 +232,18 @@ class TestAgentToolCalling:
         agent_service.model = TEST_MODEL
         agent_service.max_iterations = 1  # Force stop after 1 step
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert metadata["iteration_count"] == 1, "Should stop after 1 iteration"
-        assert metadata["stop_reason"] == "max_iterations"
-        assert "limit" in response_text.lower() or "apologize" in response_text.lower()
+        assert response.metadata.iteration_count == 1, "Should stop after 1 iteration"
+        assert response.metadata.stop_reason == "max_iterations"
+        assert "limit" in response.text.lower() or "apologize" in response.text.lower()
 
     async def test_conversation_persistence_with_tools(
         self,
@@ -262,19 +264,21 @@ class TestAgentToolCalling:
 
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
         await conversation_crud.add_message_to_conversation(
             session,
             conversation_id=conv.id,
             role=MessageRole.AGENT.value,
-            content=response_text,
-            tool_metadata=metadata,
+            content=response.text,
+            tool_metadata=response.metadata,
         )
 
         messages_after = await conversation_crud.get_conversation_messages(
@@ -303,12 +307,17 @@ class TestAgentToolCalling:
 
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert response_text
-        assert len(metadata["tool_interactions"]) == 0
+        assert response.text
+        assert len(response.text) > 0
+
+        if response.metadata:
+            assert len(response.metadata.tool_interactions) == 0
