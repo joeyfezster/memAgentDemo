@@ -224,15 +224,15 @@ class TestAgentToolCalling:
         test_user_sarah: User,
         settings,
     ):
-        """Agent stops after max iterations"""
+        """Agent stops after max iterations, preventing runaway tool use loops"""
         conv = await conversation_crud.create_conversation(
             session, user_id=test_user_sarah.id
         )
-        user_query = "Find Starbucks in SF, then NY, then Chicago, then Miami."  # Request requiring multiple steps
+        user_query = "Find coffee shops in San Francisco. Then find coffee shops in New York. Then find coffee shops in Chicago. Then search previous conversations for 'coffee' and tell me which of these locations we have already talked about."
 
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
-        agent_service.max_iterations = 1  # Force stop after 1 step
+        agent_service.max_iterations_streaming = 1  # Limit to 1 tool-use cycle
 
         response = await consume_streaming_response(
             agent_service.stream_response_with_tools(
@@ -243,11 +243,10 @@ class TestAgentToolCalling:
             )
         )
 
+        assert response.metadata.iteration_count == 1, "Should stop after 1 iteration"
         assert (
-            response.metadata.iteration_count <= 2
-        ), "Should stop early due to max_iterations limit"
-        assert response.metadata.stop_reason in ["max_iterations", "end_turn"]
-        assert "limit" in response.text.lower() or "apologize" in response.text.lower()
+            response.metadata.stop_reason == "max_iterations"
+        ), f"Expected max_iterations stop, got {response.metadata.stop_reason}"
 
     async def test_conversation_persistence_with_tools(
         self,
