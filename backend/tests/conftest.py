@@ -39,7 +39,8 @@ def configure_test_environment() -> Generator[None, None, None]:
     # Use environment variable for database host, default to localhost for CI
     # In Docker/E2E tests, this can be set to "postgres"
     db_host = os.environ.get("TEST_DB_HOST", "localhost")
-    db_url = f"postgresql+asyncpg://postgres:postgres@{db_host}:5432/memagent_test"
+    db_port = os.environ.get("TEST_DB_PORT", "5432")
+    db_url = f"postgresql+asyncpg://postgres:postgres@{db_host}:{db_port}/memagent_test"
     os.environ["DATABASE_URL"] = db_url
     os.environ["JWT_SECRET_KEY"] = "test-secret-key"
     os.environ["PERSONA_SEED_PASSWORD"] = "changeme123"
@@ -47,7 +48,9 @@ def configure_test_environment() -> Generator[None, None, None]:
     get_settings.cache_clear()
 
     async def create_test_db() -> None:
-        admin_url = f"postgresql+asyncpg://postgres:postgres@{db_host}:5432/postgres"
+        admin_url = (
+            f"postgresql+asyncpg://postgres:postgres@{db_host}:{db_port}/postgres"
+        )
         admin_engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
         async with admin_engine.begin() as conn:
             await conn.execute(text("DROP DATABASE IF EXISTS memagent_test"))

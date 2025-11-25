@@ -86,6 +86,11 @@
 - To run ALL tests including expensive ones: `pytest` (default in CI)
 - To skip expensive tests locally: `pytest -m "not expensive"` (recommended for local dev)
 - **When running expensive tests, use fail-fast mode to stop on first failure:** `pytest tests/test_agent_memory.py -v -x`
+- **SURGICAL PATTERN**: Running 'expensive' tests surgically to minimize API calls:
+  1. First run expensive tests with fail-fast: `pytest tests/test_agent_memory.py -v -x`
+  1. Stop and fix the failing test code
+  1. Run ONLY the remaining tests individually (not all from start): `pytest tests/test_agent_memory.py::test_name_that_failed tests/test_agent_memory.py::test_next_test -v -x`
+  1. Continue this pattern for each failure to minimize expensive API calls
 - **Minimize running expensive tests - only run when validating changes to agent/memory functionality**
 - Files with expensive tests: `backend/tests/test_agent_tools.py` (all 7 tests make real Claude API calls), `backend/tests/test_agent_memory.py` (5 memory retrieval tests)
 

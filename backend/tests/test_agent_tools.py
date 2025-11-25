@@ -96,16 +96,14 @@ class TestAgentToolCalling:
         tool_interactions = response.metadata.tool_interactions
         assert len(tool_interactions) > 0, "Should have tool interactions"
 
-        tool_uses = [t for t in tool_interactions if t["type"] == "tool_use"]
+        tool_uses = [t for t in tool_interactions if t.type == "tool_use"]
         assert any(
-            t["name"] == "search_places" for t in tool_uses
+            t.name == "search_places" for t in tool_uses
         ), "Should call search_places tool"
 
-        tool_results = [t for t in tool_interactions if t["type"] == "tool_result"]
+        tool_results = [t for t in tool_interactions if t.type == "tool_result"]
         assert len(tool_results) > 0, "Should have tool results"
-        assert not any(
-            t.get("is_error") for t in tool_results
-        ), "Should not have errors"
+        assert not any(t.is_error for t in tool_results), "Should not have errors"
 
     async def test_multi_tool_sequence(
         self,
@@ -141,7 +139,7 @@ class TestAgentToolCalling:
         tool_uses = [
             t for t in response.metadata.tool_interactions if t.type == "tool_use"
         ]
-        tool_names = {t["name"] for t in tool_uses}
+        tool_names = {t.name for t in tool_uses}
 
         assert "search_places" in tool_names, "Should call search_places"
         assert (
@@ -176,10 +174,10 @@ class TestAgentToolCalling:
         assert response.text, "Should get a response even if tool fails"
 
         tool_interactions = response.metadata.tool_interactions
-        tool_results = [t for t in tool_interactions if t["type"] == "tool_result"]
+        tool_results = [t for t in tool_interactions if t.type == "tool_result"]
 
         assert any(
-            t.get("is_error") for t in tool_results
+            t.is_error for t in tool_results
         ), "Should have recorded an error in tool results"
 
     async def test_tool_input_validation(
@@ -210,13 +208,13 @@ class TestAgentToolCalling:
         assert response.text
 
         tool_interactions = response.metadata.tool_interactions
-        tool_uses = [t for t in tool_interactions if t["type"] == "tool_use"]
+        tool_uses = [t for t in tool_interactions if t.type == "tool_use"]
 
         assert len(tool_uses) >= 2, "Should have retried after validation error"
 
-        assert tool_uses[0]["input"]["code"] == "guess"
+        assert tool_uses[0].input["code"] == "guess"
 
-        assert tool_uses[-1]["input"]["code"] == "secret_code"
+        assert tool_uses[-1].input["code"] == "secret_code"
 
     async def test_max_iterations_safety(
         self,

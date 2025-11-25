@@ -269,7 +269,7 @@ async def test_agent_searches_with_synonyms(
     ]
     assert len(search_calls) >= 1
 
-    search_input = search_calls[0]["input"]
+    search_input = search_calls[0].input
     keywords = search_input.get("keywords", [])
     assert (
         len(keywords) >= 2
@@ -309,10 +309,10 @@ async def test_agent_retrieves_correct_conversation(
     ]
     assert len(search_calls) >= 1
 
-    response.text_lower = response.text.lower()
-    assert "austin" in response.text_lower or "westgate" in response.text_lower
+    response_text_lower = response.text.lower()
+    assert "austin" in response_text_lower or "westgate" in response_text_lower
     assert any(
-        term in response.text_lower
+        term in response_text_lower
         for term in ["78k", "$78", "median household", "foot traffic", "15k"]
     )
 
@@ -336,17 +336,19 @@ async def test_agent_no_results_handling(
         session, conversation.id, role=MessageRole.USER.value, content=user_message
     )
 
-    response_text, response_metadata = await agent_service.generate_response_with_tools(
-        conversation_id=conversation.id,
-        user_message_content=user_message,
-        user=memory_test_user,
-        session=session,
+    response = await consume_streaming_response(
+        agent_service.stream_response_with_tools(
+            conversation_id=conversation.id,
+            user_message_content=user_message,
+            user=memory_test_user,
+            session=session,
+        )
     )
 
-    assert response_text is not None
-    assert len(response_text) > 20
+    assert response.text is not None
+    assert len(response.text) > 20
 
-    response_text_lower = response_text.lower()
+    response_text_lower = response.text.lower()
     assert any(
         phrase in response_text_lower
         for phrase in [
