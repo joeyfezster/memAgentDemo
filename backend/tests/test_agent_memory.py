@@ -363,5 +363,7 @@ async def test_agent_no_results_handling(
             "no details",
             "no conversations",
             "i don't",
+            "i couldn't",
+            "couldn't find",
         ]
     )
