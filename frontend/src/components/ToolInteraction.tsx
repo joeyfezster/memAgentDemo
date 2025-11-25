@@ -33,6 +33,11 @@ export function ToolInteraction({ interaction }: ToolInteractionProps) {
         ? interaction.content
         : JSON.stringify(interaction.content, null, 2);
 
+    const toolName = interaction.name || "Unknown tool";
+    const displayName = interaction.is_error
+      ? `Error from ${toolName}`
+      : `${toolName} result`;
+
     return (
       <div
         className={`tool-interaction tool-interaction--result ${
@@ -43,11 +48,9 @@ export function ToolInteraction({ interaction }: ToolInteractionProps) {
           <span className="tool-interaction__icon">
             {interaction.is_error ? "❌" : "✅"}
           </span>
-          <span className="tool-interaction__name">
-            {interaction.is_error ? "Error" : "Result received"}
-          </span>
+          <span className="tool-interaction__name">{displayName}</span>
         </div>
-        {contentStr && (
+        {contentStr && contentStr.trim() && (
           <details className="tool-interaction__details">
             <summary>View response</summary>
             <pre className="tool-interaction__json">{contentStr}</pre>

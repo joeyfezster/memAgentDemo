@@ -81,6 +81,43 @@ export type SendMessageResponse = {
   assistant_message: Message;
 };
 
+type StreamedChunkEvent = {
+  type: "chunk";
+  content: string;
+};
+
+type StreamedUserMessageEvent = {
+  type: "user_message";
+  message: Message;
+};
+
+type StreamedAssistantMessageEvent = {
+  type: "assistant_message";
+  message: Message;
+};
+
+type StreamedToolUseStartEvent = {
+  type: "tool_use_start";
+  tool_name: string;
+  tool_id: string;
+  input: Record<string, unknown>;
+};
+
+type StreamedToolResultEvent = {
+  type: "tool_result";
+  tool_id: string;
+  tool_name: string;
+  result: unknown;
+  is_error: boolean;
+};
+
+export type StreamedChatEvent =
+  | StreamedChunkEvent
+  | StreamedUserMessageEvent
+  | StreamedAssistantMessageEvent
+  | StreamedToolUseStartEvent
+  | StreamedToolResultEvent;
+
 export async function login(
   email: string,
   password: string,
@@ -210,4 +247,65 @@ export async function sendMessageToConversation(
   }
 
   return response.json() as Promise<SendMessageResponse>;
+}
+
+export async function streamMessageToConversation(
+  token: string,
+  conversationId: string,
+  content: string,
+  onEvent: (event: StreamedChatEvent) => void,
+): Promise<void> {
+  const response = await fetch(
+    `${getApiBaseUrl()}/chat/conversations/${conversationId}/messages/stream`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({ content }),
+    },
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "Failed to send message");
+  }
+
+  if (!response.body) {
+    throw new Error("No response body for stream");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      const remaining = buffer.trim();
+      if (remaining.startsWith("data:")) {
+        const data = remaining.slice(5).trim();
+        if (data !== "[DONE]") {
+          onEvent(JSON.parse(data) as StreamedChatEvent);
+        }
+      }
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const event of events) {
+      const line = event.trim();
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data === "[DONE]") {
+        return;
+      }
+      onEvent(JSON.parse(data) as StreamedChatEvent);
+    }
+  }
 }

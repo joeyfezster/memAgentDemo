@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import os
 import pytest
 import pytest_asyncio
-import testing.postgresql
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
-from app.db.base import Base
 from app.db.session import get_engine, get_session_factory, init_engine
 from app.models.user import User
 from app.models.conversation import Conversation
@@ -16,35 +12,8 @@ from app.models.types import MessageRole
 from app.core.security import get_password_hash
 
 
-@pytest_asyncio.fixture(scope="module")
-async def unit_test_db():
-    postgresql = testing.postgresql.Postgresql()
-    original_db_url = os.environ.get("DATABASE_URL")
-
-    os.environ["DATABASE_URL"] = postgresql.url().replace(
-        "postgresql://", "postgresql+asyncpg://"
-    )
-
-    get_settings.cache_clear()
-    init_engine()
-
-    engine = get_engine()
-    async with engine.begin() as conn:
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(Base.metadata.create_all)
-
-    await engine.dispose()
-
-    yield
-
-    if original_db_url:
-        os.environ["DATABASE_URL"] = original_db_url
-    get_settings.cache_clear()
-    postgresql.stop()
-
-
 @pytest_asyncio.fixture
-async def test_session(unit_test_db):
+async def test_session():
     init_engine()
     engine = get_engine()
     session_factory = get_session_factory()

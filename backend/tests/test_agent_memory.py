@@ -15,6 +15,7 @@ from app.models.user import User
 from app.core.security import get_password_hash
 from app.core.config import get_settings
 from app.services.agent_service import AgentService
+from tests.conftest import consume_streaming_response
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.expensive]
 TEST_MODEL = "claude-sonnet-4-5-20250929"
@@ -176,26 +177,27 @@ async def test_agent_searches_memory_on_reference_to_past(
         session, conversation.id, role=MessageRole.USER.value, content=user_message
     )
 
-    response_text, response_metadata = await agent_service.generate_response_with_tools(
-        conversation_id=conversation.id,
-        user_message_content=user_message,
-        user=user,
-        session=session,
+    response = await consume_streaming_response(
+        agent_service.stream_response_with_tools(
+            conversation_id=conversation.id,
+            user_message_content=user_message,
+            user=user,
+            session=session,
+        )
     )
 
-    assert response_metadata is not None
-    tool_interactions = response_metadata.get("tool_interactions", [])
+    assert response.metadata is not None
+    tool_interactions = response.metadata.tool_interactions
     assert len(tool_interactions) > 0
 
     search_calls = [
         t
         for t in tool_interactions
-        if t.get("type") == "tool_use"
-        and t.get("name") == SearchPastConversationsTool.name
+        if t.type == "tool_use" and t.name == SearchPastConversationsTool.name
     ]
     assert len(search_calls) >= 1
 
-    assert "22%" in response_text or "18%" in response_text or "15%" in response_text
+    assert "22%" in response.text or "18%" in response.text or "15%" in response.text
 
 
 async def test_agent_does_not_search_for_general_questions(
@@ -213,24 +215,25 @@ async def test_agent_does_not_search_for_general_questions(
         session, conversation.id, role=MessageRole.USER.value, content=user_message
     )
 
-    response_text, response_metadata = await agent_service.generate_response_with_tools(
-        conversation_id=conversation.id,
-        user_message_content=user_message,
-        user=user,
-        session=session,
+    response = await consume_streaming_response(
+        agent_service.stream_response_with_tools(
+            conversation_id=conversation.id,
+            user_message_content=user_message,
+            user=user,
+            session=session,
+        )
     )
 
-    if response_metadata:
-        tool_interactions = response_metadata.get("tool_interactions", [])
+    if response.metadata:
+        tool_interactions = response.metadata.tool_interactions
         search_calls = [
             t
             for t in tool_interactions
-            if t.get("type") == "tool_use"
-            and t.get("name") == SearchPastConversationsTool.name
+            if t.type == "tool_use" and t.name == SearchPastConversationsTool.name
         ]
         assert len(search_calls) == 0
 
-    assert len(response_text) > 50
+    assert len(response.text) > 50
 
 
 async def test_agent_searches_with_synonyms(
@@ -248,20 +251,21 @@ async def test_agent_searches_with_synonyms(
         session, conversation.id, role=MessageRole.USER.value, content=user_message
     )
 
-    response_text, response_metadata = await agent_service.generate_response_with_tools(
-        conversation_id=conversation.id,
-        user_message_content=user_message,
-        user=user,
-        session=session,
+    response = await consume_streaming_response(
+        agent_service.stream_response_with_tools(
+            conversation_id=conversation.id,
+            user_message_content=user_message,
+            user=user,
+            session=session,
+        )
     )
 
-    assert response_metadata is not None
-    tool_interactions = response_metadata.get("tool_interactions", [])
+    assert response.metadata is not None
+    tool_interactions = response.metadata.tool_interactions
     search_calls = [
         t
         for t in tool_interactions
-        if t.get("type") == "tool_use"
-        and t.get("name") == SearchPastConversationsTool.name
+        if t.type == "tool_use" and t.name == SearchPastConversationsTool.name
     ]
     assert len(search_calls) >= 1
 
@@ -287,27 +291,28 @@ async def test_agent_retrieves_correct_conversation(
         session, conversation.id, role=MessageRole.USER.value, content=user_message
     )
 
-    response_text, response_metadata = await agent_service.generate_response_with_tools(
-        conversation_id=conversation.id,
-        user_message_content=user_message,
-        user=user,
-        session=session,
+    response = await consume_streaming_response(
+        agent_service.stream_response_with_tools(
+            conversation_id=conversation.id,
+            user_message_content=user_message,
+            user=user,
+            session=session,
+        )
     )
 
-    assert response_metadata is not None
-    tool_interactions = response_metadata.get("tool_interactions", [])
+    assert response.metadata is not None
+    tool_interactions = response.metadata.tool_interactions
     search_calls = [
         t
         for t in tool_interactions
-        if t.get("type") == "tool_use"
-        and t.get("name") == SearchPastConversationsTool.name
+        if t.type == "tool_use" and t.name == SearchPastConversationsTool.name
     ]
     assert len(search_calls) >= 1
 
-    response_text_lower = response_text.lower()
-    assert "austin" in response_text_lower or "westgate" in response_text_lower
+    response.text_lower = response.text.lower()
+    assert "austin" in response.text_lower or "westgate" in response.text_lower
     assert any(
-        term in response_text_lower
+        term in response.text_lower
         for term in ["78k", "$78", "median household", "foot traffic", "15k"]
     )
 

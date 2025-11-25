@@ -82,6 +82,15 @@ test.describe("Chat Functionality", () => {
         timeout: 15000,
       });
 
+      // Wait for streaming to complete
+      await expect(assistantMessage).toHaveAttribute(
+        "data-streaming",
+        "false",
+        {
+          timeout: 15000,
+        },
+      );
+
       const messageText = await assistantMessage.textContent();
       expect(messageText?.toLowerCase()).toContain("joe");
       expect(messageText?.toLowerCase()).toContain("banana");
@@ -102,9 +111,11 @@ test.describe("Chat Functionality", () => {
       await messageInput.fill("What is 2 + 2?");
       await page.getByRole("button", { name: /send/i }).click();
 
-      await expect(
-        page.locator(".chat__message.chat__message--assistant").first(),
-      ).toBeVisible({
+      const firstAssistant = page.locator(".chat__message--assistant").first();
+      await expect(firstAssistant).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(firstAssistant).toHaveAttribute("data-streaming", "false", {
         timeout: 15000,
       });
     });
@@ -114,9 +125,11 @@ test.describe("Chat Functionality", () => {
       await messageInput.fill("What about 3 + 3?");
       await page.getByRole("button", { name: /send/i }).click();
 
-      await expect(
-        page.locator(".chat__message.chat__message--assistant").nth(1),
-      ).toBeVisible({
+      const secondAssistant = page.locator(".chat__message--assistant").nth(1);
+      await expect(secondAssistant).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(secondAssistant).toHaveAttribute("data-streaming", "false", {
         timeout: 15000,
       });
     });
@@ -157,6 +170,43 @@ test.describe("Chat Functionality", () => {
       });
 
       await expect(sendButton).toBeEnabled();
+    });
+  });
+
+  test("should stream assistant responses chunk by chunk", async ({ page }) => {
+    await page.locator(".new-chat-button").click();
+    await page.waitForTimeout(500);
+
+    const messageInput = page.getByPlaceholder(/type.*message/i);
+    await expect(messageInput).toBeEditable({ timeout: 10000 });
+    await messageInput.fill(
+      "Describe the benefits of streaming responses for user experience in a couple sentences.",
+    );
+
+    const sendButton = page.getByRole("button", { name: /send/i });
+    await sendButton.click();
+
+    const assistantMessage = page.locator(".chat__message--assistant").first();
+
+    await expect(assistantMessage).toHaveAttribute("data-streaming", "true", {
+      timeout: 15000,
+    });
+
+    const startingLength = (await assistantMessage.textContent())?.length ?? 0;
+
+    await expect
+      .poll(
+        async () => {
+          const currentLength =
+            (await assistantMessage.textContent())?.length ?? 0;
+          return currentLength;
+        },
+        { timeout: 15000 },
+      )
+      .toBeGreaterThan(startingLength);
+
+    await expect(assistantMessage).toHaveAttribute("data-streaming", "false", {
+      timeout: 15000,
     });
   });
 
