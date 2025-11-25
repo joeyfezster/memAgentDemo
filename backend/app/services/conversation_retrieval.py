@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select, Text
+from sqlalchemy import func, select, Text, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
-from app.models.types import MessageDict
+from app.models.types import ConversationSection
 
 
 async def search_conversations_fulltext(
@@ -49,38 +49,103 @@ async def search_conversations_fulltext(
     return list(result.scalars().all())
 
 
+async def search_messages_fulltext(
+    session: AsyncSession,
+    user_id: str,
+    keywords: list[str],
+    limit: int = 10,
+    context_before: int = 2,
+    context_after: int = 2,
+    max_days_ago: int | None = None,
+    role_filter: str | None = None,
+    case_sensitive: bool = False,
+) -> list[ConversationSection]:
+    """Search for specific messages matching keywords with surrounding context.
+
+    Performs message-level keyword search across user's conversations, returning
+    matched messages wrapped in ConversationSection objects with configurable context.
+    Supports multiple keywords (OR logic), date filtering, and role-based filtering.
+
+    Args:
+        session: Async database session
+        user_id: User whose conversations to search
+        keywords: List of keywords (any match counts)
+        limit: Maximum conversation sections to return
+        context_before: Number of messages before match to include
+        context_after: Number of messages after match to include
+        max_days_ago: Only search conversations from last N days (None = all history)
+        role_filter: Filter matched messages by role ('user', 'assistant', None = all)
+        case_sensitive: Whether keyword matching is case-sensitive (default False)
+
+    Returns:
+        List of ConversationSection objects, one per matched conversation,
+        ordered by conversation recency (most recent first)
+    """
+    search_query = select(Conversation).where(Conversation.user_id == user_id)
+
+    if max_days_ago is not None:
+        cutoff_date = datetime.now(UTC) - timedelta(days=max_days_ago)
+        search_query = search_query.where(Conversation.created_at >= cutoff_date)
+
+    keyword_conditions = [
+        func.cast(Conversation.messages_document, Text).ilike(f"%{keyword}%")
+        for keyword in keywords
+    ]
+
+    if keyword_conditions:
+        search_query = search_query.where(or_(*keyword_conditions))
+
+    search_query = search_query.order_by(Conversation.created_at.desc())
+
+    result = await session.execute(search_query)
+    conversations = list(result.scalars().all())
+
+    matches = []
+    for conv in conversations:
+        messages = conv.get_messages()
+
+        for idx, msg in enumerate(messages):
+            if role_filter and msg.role != role_filter:
+                continue
+
+            content = msg.content if case_sensitive else msg.content.lower()
+            keywords_normalized = (
+                keywords if case_sensitive else [k.lower() for k in keywords]
+            )
+            if any(keyword in content for keyword in keywords_normalized):
+                start_idx = max(0, idx - context_before)
+                end_idx = min(len(messages), idx + context_after + 1)
+
+                context_before_msgs = messages[start_idx:idx]
+                context_after_msgs = messages[idx + 1 : end_idx]
+
+                matches.append(
+                    ConversationSection(
+                        conversation_id=conv.id,
+                        conversation_title=conv.title,
+                        conversation_created_at=conv.created_at,
+                        matched_message=msg,
+                        messages_before=context_before_msgs,
+                        messages_after=context_after_msgs,
+                        match_index=idx,
+                        total_messages=len(messages),
+                    )
+                )
+
+                break
+
+        if len(matches) >= limit:
+            break
+
+    return matches[:limit]
+
+
 async def search_conversations_vector(
     session: AsyncSession,
     user_id: str,
     query_embedding: list[float],
     limit: int = 10,
 ) -> list[Conversation]:
-    """Search conversations using semantic vector similarity.
-
-    Finds conversations semantically similar to the query using pgvector
-    cosine distance. Requires conversations to have embeddings generated.
-
-    Args:
-        session: The async database session.
-        user_id: The ID of the user whose conversations to search.
-        query_embedding: Vector embedding of the search query (e.g., from OpenAI
-            text-embedding-3-small). Must match the dimension configured in
-            settings.embedding_dimension (default 1536).
-        limit: Maximum number of conversations to return. Defaults to 10.
-
-    Returns:
-        A list of Conversation objects ordered by semantic similarity
-        (closest first), excluding conversations without embeddings.
-
-    Example:
-        >>> # Find conversations about site selection semantically similar to query
-        >>> query_emb = await get_embedding(
-        ...     "Which locations should I consider for new store openings?"
-        ... )
-        >>> conversations = await search_conversations_vector(
-        ...     session, user_id="123", query_embedding=query_emb, limit=5
-        ... )
-    """
     result = await session.execute(
         select(Conversation)
         .where(
@@ -101,36 +166,6 @@ async def search_conversations_hybrid(
     limit: int = 10,
     alpha: float = 0.5,
 ) -> list[Conversation]:
-    """Search conversations using hybrid full-text and vector similarity.
-
-    Combines full-text search and semantic vector search with weighted scoring
-    to find the most relevant conversations. Uses reciprocal rank fusion (RRF)
-    to merge results from both search methods.
-
-    Args:
-        session: The async database session.
-        user_id: The ID of the user whose conversations to search.
-        search_text: The text to search for (case-insensitive substring match).
-        query_embedding: Vector embedding of the search query. Must match the
-            dimension configured in settings.embedding_dimension (default 1536).
-        limit: Maximum number of conversations to return. Defaults to 10.
-        alpha: Weight balance between full-text (alpha) and vector (1-alpha)
-            search. Range [0.0, 1.0]. Default 0.5 gives equal weight.
-
-    Returns:
-        A list of Conversation objects ordered by hybrid relevance score
-        (highest first), combining both lexical and semantic matches.
-
-    Example:
-        >>> # Search for trade area analysis using both keywords and semantics
-        >>> query_emb = await get_embedding(
-        ...     "Show me trade area demographics and visitor profiles"
-        ... )
-        >>> conversations = await search_conversations_hybrid(
-        ...     session, user_id="123", search_text="trade area demographics",
-        ...     query_embedding=query_emb, limit=5, alpha=0.6
-        ... )
-    """
     fulltext_results = await search_conversations_fulltext(
         session, user_id, search_text, limit=limit * 2
     )
@@ -162,73 +197,3 @@ async def search_conversations_hybrid(
     )
 
     return [conv for conv, score in sorted_conversations[:limit]]
-
-
-def filter_messages_by_role(
-    conversation: Conversation, message_role: str
-) -> list[MessageDict]:
-    """Filter messages in a conversation by role.
-
-    Extracts only messages with a specific role from a conversation.
-    Useful for analyzing user questions, agent responses, or system messages.
-
-    Args:
-        conversation: The Conversation object to filter.
-        message_role: The role to filter by. Valid values: "user", "_agent", "system".
-
-    Returns:
-        A list of message dictionaries with the specified role, preserving
-        original order.
-
-    Example:
-        >>> # Extract all user questions about store performance
-        >>> user_msgs = filter_messages_by_role(conversation, "user")
-        >>> # Get all agent recommendations for site selection
-        >>> agent_msgs = filter_messages_by_role(conversation, "_agent")
-    """
-    messages = conversation.get_messages()
-    return [msg for msg in messages if msg.role == message_role]
-
-
-def filter_messages_by_date_range(
-    conversation: Conversation, start: datetime, end: datetime
-) -> list[MessageDict]:
-    """Filter messages in a conversation by date range.
-
-    Extracts messages created within a specific time window. Useful for
-    analyzing conversation history over specific periods or finding recent
-    interactions.
-
-    Args:
-        conversation: The Conversation object to filter.
-        start: The start of the date range (inclusive).
-        end: The end of the date range (inclusive).
-
-    Returns:
-        A list of message dictionaries created between start and end dates,
-        preserving original order. Messages with invalid timestamps are excluded.
-
-    Example:
-        >>> # Get campaign performance discussions from last quarter
-        >>> from datetime import datetime, timedelta
-        >>> end = datetime.now(UTC)
-        >>> start = end - timedelta(days=90)
-        >>> recent_msgs = filter_messages_by_date_range(conversation, start, end)
-    """
-    messages = conversation.get_messages()
-    filtered = []
-    for msg in messages:
-        created_at_str = msg.created_at
-        if created_at_str:
-            try:
-                if isinstance(created_at_str, str):
-                    msg_date = datetime.fromisoformat(
-                        created_at_str.replace("Z", "+00:00")
-                    )
-                else:
-                    msg_date = created_at_str
-                if start <= msg_date <= end:
-                    filtered.append(msg)
-            except (ValueError, AttributeError):
-                continue
-    return filtered

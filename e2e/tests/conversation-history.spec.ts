@@ -98,8 +98,14 @@ test.describe("Conversation History", () => {
         timeout: 5000,
       });
 
-      // Wait for agent response
-      await page.waitForTimeout(2000);
+      // Wait for agent response to complete streaming
+      const firstAssistant = page
+        .locator("[data-testid='message'][data-role='assistant']")
+        .first();
+      await expect(firstAssistant).toBeVisible({ timeout: 15000 });
+      await expect(firstAssistant).toHaveAttribute("data-streaming", "false", {
+        timeout: 15000,
+      });
     });
 
     await test.step("Ask agent to recall user name", async () => {
@@ -110,12 +116,18 @@ test.describe("Conversation History", () => {
       await expect(page.getByText("What's my name?")).toBeVisible({
         timeout: 5000,
       });
+
+      // Wait for agent response to complete streaming
+      const secondAssistant = page
+        .locator("[data-testid='message'][data-role='assistant']")
+        .nth(1);
+      await expect(secondAssistant).toBeVisible({ timeout: 15000 });
+      await expect(secondAssistant).toHaveAttribute("data-streaming", "false", {
+        timeout: 15000,
+      });
     });
 
     await test.step("Verify agent remembers the name", async () => {
-      // Wait for agent response to the "What's my name?" question
-      await page.waitForTimeout(3000);
-
       // Get all assistant messages (not user messages)
       const agentMessages = page.locator(
         "[data-testid='message'][data-role='assistant']",
@@ -149,8 +161,14 @@ test.describe("Conversation History", () => {
         timeout: 5000,
       });
 
-      // Wait for agent response
-      await page.waitForTimeout(2000);
+      // Wait for agent response to complete streaming
+      const firstAssistant = page
+        .locator("[data-testid='message'][data-role='assistant']")
+        .first();
+      await expect(firstAssistant).toBeVisible({ timeout: 15000 });
+      await expect(firstAssistant).toHaveAttribute("data-streaming", "false", {
+        timeout: 15000,
+      });
     });
 
     await test.step("Ask agent to recall user name", async () => {
@@ -171,6 +189,15 @@ test.describe("Conversation History", () => {
       await expect(assistantMessages.last()).toContainText(/sarah/i, {
         timeout: 10000,
       });
+
+      // Wait for streaming to complete
+      await expect(assistantMessages.last()).toHaveAttribute(
+        "data-streaming",
+        "false",
+        {
+          timeout: 15000,
+        },
+      );
     });
   });
 
@@ -194,6 +221,19 @@ test.describe("Conversation History", () => {
       ).toBeVisible({
         timeout: 5000,
       });
+
+      // Wait for agent response to complete streaming
+      const assistantMessage = page
+        .locator("[data-testid='message'][data-role='assistant']")
+        .first();
+      await expect(assistantMessage).toBeVisible({ timeout: 15000 });
+      await expect(assistantMessage).toHaveAttribute(
+        "data-streaming",
+        "false",
+        {
+          timeout: 15000,
+        },
+      );
     });
 
     await test.step("Verify conversation appears in sidebar", async () => {
@@ -210,6 +250,19 @@ test.describe("Conversation History", () => {
       await expect(page.getByText("Follow-up message").first()).toBeVisible({
         timeout: 5000,
       });
+
+      // Wait for agent response to complete streaming
+      const assistantMessage = page
+        .locator("[data-testid='message'][data-role='assistant']")
+        .last();
+      await expect(assistantMessage).toBeVisible({ timeout: 15000 });
+      await expect(assistantMessage).toHaveAttribute(
+        "data-streaming",
+        "false",
+        {
+          timeout: 15000,
+        },
+      );
     });
 
     await test.step("Verify conversation has generated title", async () => {
@@ -275,8 +328,18 @@ test.describe("Conversation History", () => {
         timeout: 5000,
       });
 
-      // Wait for agent response with increased timeout
-      await page.waitForTimeout(4000);
+      // Wait for agent response to complete streaming
+      const assistantMessage = page
+        .locator("[data-testid='message'][data-role='assistant']")
+        .last();
+      await expect(assistantMessage).toBeVisible({ timeout: 15000 });
+      await expect(assistantMessage).toHaveAttribute(
+        "data-streaming",
+        "false",
+        {
+          timeout: 15000,
+        },
+      );
     });
 
     await test.step("Verify second conversation message count increased", async () => {

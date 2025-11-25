@@ -41,14 +41,18 @@
 
 ## Additional Recommended Improvements
 
+### Agent Model
+
+1. The conversation history is passed completely as context to the LLM for each turn, with no summarization or trimming for now. One way to address this could be a clever summarization strategy for conversation with messages that go beyond some threshold
+
+### Memory Model
+
+1. A basic keyword-based retrieval tool has been implemented, and an embedding-based retrieval tool is in progress. Further retrieval strategies could be added.
+
 ### Cost Model
 
 1. Implement a cost tracking system to monitor per-query token usage, embedding costs, and overall expenses related to memory operations.
 1. Create a credit system for effective pricing per consumption of data + analytics (tokens).
-
-### Agent Model
-
-1. The conversation history is passed completely as context to the LLM for each turn, with no summarization or trimming for now. One way to address this could be a clever summarization strategy for conversation with messages that go beyond some threshold
 
 ### Governance
 

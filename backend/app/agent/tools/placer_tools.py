@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 # ============================================================================
-# Input Models (Pydantic for validation)
+# Tool Input Models (Pydantic for validation)
 # ============================================================================
 
 
@@ -102,15 +102,6 @@ class GetVisitFlowsInput(BaseModel):
     )
     min_shared_visitors: int = Field(
         100, description="Minimum shared visitors for destination inclusion"
-    )
-
-
-class SearchPastConversationsInput(BaseModel):
-    query: str = Field(..., description="Search query for conversation history")
-    limit: int = Field(5, description="Maximum number of conversations to return")
-    time_range: dict | None = Field(
-        None,
-        description="Optional time range filter: {start: 'YYYY-MM-DD', end: 'YYYY-MM-DD'}",
     )
 
 
@@ -532,40 +523,6 @@ class GetVisitFlowsTool:
         }
 
 
-class SearchPastConversationsTool:
-    """Search through previous conversations for relevant context (PLACEHOLDER)"""
-
-    name = "search_past_conversations"
-    description = """Search through previous conversations for relevant context and history.
-
-    Use when:
-    - User references past discussions
-    - You need historical context about user preferences
-    - Looking up previously mentioned places or analyses
-
-    NOTE: Vector store integration pending - returns empty results for now."""
-
-    def get_input_schema(self) -> dict:
-        return SearchPastConversationsInput.model_json_schema()
-
-    async def execute(self, **kwargs: Any) -> dict:
-        try:
-            input_data = SearchPastConversationsInput(**kwargs)
-        except Exception as e:
-            return {
-                "error": f"Invalid input parameters: {str(e)}",
-                "conversations": [],
-                "note": "Error processing search query",
-            }
-
-        # TODO: Wire up to vector store after PR merges
-        return {
-            "conversations": [],
-            "note": "Vector store integration pending. This tool will search past conversation history once the memory layer is connected.",
-            "query": input_data.query,
-        }
-
-
 # ============================================================================
 # Tool Registry Export
 # ============================================================================
@@ -577,5 +534,4 @@ PLACER_TOOLS = [
     GetTradeAreaProfileTool(),
     GetProfileAndOverlapTool(),
     GetVisitFlowsTool(),
-    SearchPastConversationsTool(),
 ]

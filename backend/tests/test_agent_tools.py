@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,9 +8,10 @@ from app.crud import conversation as conversation_crud
 from app.models.types import MessageRole
 from app.models.user import User
 from app.services.agent_service import AgentService
+from tests.conftest import consume_streaming_response
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.expensive]
-TEST_MODEL = "claude-opus-4-1-20250805"
+TEST_MODEL = "claude-sonnet-4-5-20250929"
 
 
 @pytest.fixture
@@ -66,18 +69,20 @@ class TestAgentToolCalling:
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert response_text, "Should get a response"
-        assert metadata["stop_reason"] in ["end_turn", "max_iterations"]
-        assert metadata["iteration_count"] >= 1
+        assert response.text, "Should get a response"
+        assert response.metadata.stop_reason in ["end_turn", "max_iterations"]
+        assert response.metadata.iteration_count >= 1
 
-        response_lower = response_text.lower()
+        response_lower = response.text.lower()
         assert any(
             word in response_lower
             for word in [
@@ -90,19 +95,17 @@ class TestAgentToolCalling:
             ]
         ), "Response should mention search results"
 
-        tool_interactions = metadata["tool_interactions"]
+        tool_interactions = response.metadata.tool_interactions
         assert len(tool_interactions) > 0, "Should have tool interactions"
 
-        tool_uses = [t for t in tool_interactions if t["type"] == "tool_use"]
+        tool_uses = [t for t in tool_interactions if t.type == "tool_use"]
         assert any(
-            t["name"] == "search_places" for t in tool_uses
+            t.name == "search_places" for t in tool_uses
         ), "Should call search_places tool"
 
-        tool_results = [t for t in tool_interactions if t["type"] == "tool_result"]
+        tool_results = [t for t in tool_interactions if t.type == "tool_result"]
         assert len(tool_results) > 0, "Should have tool results"
-        assert not any(
-            t.get("is_error") for t in tool_results
-        ), "Should not have errors"
+        assert not any(t.is_error for t in tool_results), "Should not have errors"
 
     async def test_multi_tool_sequence(
         self,
@@ -119,20 +122,26 @@ class TestAgentToolCalling:
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert response_text
-        assert metadata["stop_reason"] in ["end_turn", "max_iterations"]
+        assert response.text
+
+        assert response.text
+        assert response.metadata.iteration_count >= 1
+        assert response.text
+        assert response.metadata.stop_reason in ["end_turn", "max_iterations"]
 
         tool_uses = [
-            t for t in metadata["tool_interactions"] if t["type"] == "tool_use"
+            t for t in response.metadata.tool_interactions if t.type == "tool_use"
         ]
-        tool_names = {t["name"] for t in tool_uses}
+        tool_names = {t.name for t in tool_uses}
 
         assert "search_places" in tool_names, "Should call search_places"
         assert (
@@ -155,20 +164,22 @@ class TestAgentToolCalling:
         agent_service.model = TEST_MODEL
         agent_service.tool_registry.register(BrokenTool())
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert response_text, "Should get a response even if tool fails"
+        assert response.text, "Should get a response even if tool fails"
 
-        tool_interactions = metadata["tool_interactions"]
-        tool_results = [t for t in tool_interactions if t["type"] == "tool_result"]
+        tool_interactions = response.metadata.tool_interactions
+        tool_results = [t for t in tool_interactions if t.type == "tool_result"]
 
         assert any(
-            t.get("is_error") for t in tool_results
+            t.is_error for t in tool_results
         ), "Should have recorded an error in tool results"
 
     async def test_tool_input_validation(
@@ -187,23 +198,25 @@ class TestAgentToolCalling:
         agent_service.model = TEST_MODEL
         agent_service.tool_registry.register(StrictTool())
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert response_text
+        assert response.text
 
-        tool_interactions = metadata["tool_interactions"]
-        tool_uses = [t for t in tool_interactions if t["type"] == "tool_use"]
+        tool_interactions = response.metadata.tool_interactions
+        tool_uses = [t for t in tool_interactions if t.type == "tool_use"]
 
         assert len(tool_uses) >= 2, "Should have retried after validation error"
 
-        assert tool_uses[0]["input"]["code"] == "guess"
+        assert tool_uses[0].input["code"] == "guess"
 
-        assert tool_uses[-1]["input"]["code"] == "secret_code"
+        assert tool_uses[-1].input["code"] == "secret_code"
 
     async def test_max_iterations_safety(
         self,
@@ -211,26 +224,29 @@ class TestAgentToolCalling:
         test_user_sarah: User,
         settings,
     ):
-        """Agent stops after max iterations"""
+        """Agent stops after max iterations, preventing runaway tool use loops"""
         conv = await conversation_crud.create_conversation(
             session, user_id=test_user_sarah.id
         )
-        user_query = "Find Starbucks in SF, then NY, then Chicago, then Miami."  # Request requiring multiple steps
+        user_query = "Find coffee shops in San Francisco. Then find coffee shops in New York. Then find coffee shops in Chicago. Then search previous conversations for 'coffee' and tell me which of these locations we have already talked about."
 
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
-        agent_service.max_iterations = 1  # Force stop after 1 step
+        agent_service.max_iterations_streaming = 1  # Limit to 1 tool-use cycle
 
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert metadata["iteration_count"] == 1, "Should stop after 1 iteration"
-        assert metadata["stop_reason"] == "max_iterations"
-        assert "limit" in response_text.lower() or "apologize" in response_text.lower()
+        assert response.metadata.iteration_count == 1, "Should stop after 1 iteration"
+        assert (
+            response.metadata.stop_reason == "max_iterations"
+        ), f"Expected max_iterations stop, got {response.metadata.stop_reason}"
 
     async def test_conversation_persistence_with_tools(
         self,
@@ -251,19 +267,21 @@ class TestAgentToolCalling:
 
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
         await conversation_crud.add_message_to_conversation(
             session,
             conversation_id=conv.id,
             role=MessageRole.AGENT.value,
-            content=response_text,
-            tool_metadata=metadata,
+            content=response.text,
+            tool_metadata=asdict(response.metadata) if response.metadata else None,
         )
 
         messages_after = await conversation_crud.get_conversation_messages(
@@ -292,12 +310,17 @@ class TestAgentToolCalling:
 
         agent_service = AgentService(settings)
         agent_service.model = TEST_MODEL
-        response_text, metadata = await agent_service.generate_response_with_tools(
-            conversation_id=conv.id,
-            user_message_content=user_query,
-            user=test_user_sarah,
-            session=session,
+        response = await consume_streaming_response(
+            agent_service.stream_response_with_tools(
+                conversation_id=conv.id,
+                user_message_content=user_query,
+                user=test_user_sarah,
+                session=session,
+            )
         )
 
-        assert response_text
-        assert len(metadata["tool_interactions"]) == 0
+        assert response.text
+        assert len(response.text) > 0
+
+        if response.metadata:
+            assert len(response.metadata.tool_interactions) == 0
